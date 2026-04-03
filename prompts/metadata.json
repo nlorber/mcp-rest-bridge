@@ -1,0 +1,40 @@
+{
+  "prompts": [
+    {
+      "id": "summarize-entity",
+      "name": "Summarize Entity",
+      "description": "Generate a natural-language summary of a specific entity (item or category)",
+      "file": "summarize-entity.md",
+      "arguments": [
+        {
+          "name": "entity_type",
+          "description": "The type of entity to summarize (item or category)",
+          "required": true
+        },
+        {
+          "name": "entity_id",
+          "description": "The ID of the entity to summarize",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "generate-report",
+      "name": "Generate Report",
+      "description": "Generate a structured report about inventory data",
+      "file": "generate-report.md",
+      "arguments": [
+        {
+          "name": "report_type",
+          "description": "Type of report: inventory-summary, low-stock, or category-breakdown",
+          "required": true
+        },
+        {
+          "name": "format",
+          "description": "Output format: markdown or plain",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
