@@ -1,6 +1,10 @@
 # mcp-rest-bridge
 
+[![CI](https://github.com/nlorber/mcp-rest-bridge/actions/workflows/test.yml/badge.svg)](https://github.com/nlorber/mcp-rest-bridge/actions/workflows/test.yml)
+
 Production-ready MCP server template for wrapping any REST API as a set of tools, prompts, and resources usable by LLMs. Fork, configure, deploy.
+
+> **Note:** This project is an anonymized and rewritten version of a system originally built in a professional context. All proprietary code, company references, and internal API details have been removed. The mock inventory API replaces the original domain.
 
 ## Features
 
@@ -19,7 +23,7 @@ Production-ready MCP server template for wrapping any REST API as a set of tools
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/your-org/mcp-rest-bridge.git
+git clone https://github.com/nlorber/mcp-rest-bridge.git
 cd mcp-rest-bridge
 npm install
 

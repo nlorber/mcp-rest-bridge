@@ -24,7 +24,7 @@ export function initializeResources(config: Config): Resource[] {
   });
 
   // Scheme: api:// — expose API spec / metadata
-  registerScheme("api", handleApiResource);
+  registerScheme("api", handleApiResource(config));
   resources.push({
     uri: "api://mock/spec",
     name: "API Specification",
@@ -115,30 +115,32 @@ function handleConfigResource(config: Config) {
   };
 }
 
-async function handleApiResource(uri: string): Promise<TextResourceContents> {
-  if (uri !== "api://mock/spec") {
-    throw invalidRequest(`Unknown API resource: ${uri}`);
-  }
+function handleApiResource(config: Config) {
+  return async (uri: string): Promise<TextResourceContents> => {
+    if (uri !== "api://mock/spec") {
+      throw invalidRequest(`Unknown API resource: ${uri}`);
+    }
 
-  const spec = {
-    name: "Mock REST API",
-    version: "1.0.0",
-    baseUrl: "http://localhost:3100",
-    endpoints: [
-      { method: "POST", path: "/auth/token", description: "Acquire JWT token" },
-      { method: "GET", path: "/items", description: "List items (paginated)" },
-      { method: "GET", path: "/items/:id", description: "Get item details" },
-      { method: "POST", path: "/items", description: "Create item" },
-      { method: "PATCH", path: "/items/:id", description: "Update item" },
-      { method: "DELETE", path: "/items/:id", description: "Delete item" },
-      { method: "GET", path: "/categories", description: "List categories" },
-      { method: "GET", path: "/categories/:id", description: "Get category details" },
-    ],
-  };
+    const spec = {
+      name: "Mock REST API",
+      version: "1.0.0",
+      baseUrl: config.API_BASE_URL,
+      endpoints: [
+        { method: "POST", path: "/auth/token", description: "Acquire JWT token" },
+        { method: "GET", path: "/items", description: "List items (paginated)" },
+        { method: "GET", path: "/items/:id", description: "Get item details" },
+        { method: "POST", path: "/items", description: "Create item" },
+        { method: "PATCH", path: "/items/:id", description: "Update item" },
+        { method: "DELETE", path: "/items/:id", description: "Delete item" },
+        { method: "GET", path: "/categories", description: "List categories" },
+        { method: "GET", path: "/categories/:id", description: "Get category details" },
+      ],
+    };
 
-  return {
-    uri,
-    mimeType: "application/json",
-    text: JSON.stringify(spec, null, 2),
+    return {
+      uri,
+      mimeType: "application/json",
+      text: JSON.stringify(spec, null, 2),
+    };
   };
 }

@@ -48,7 +48,7 @@ export function createMcpServer(config: Config, logger: Logger): Server {
         prompts: {},
         resources: {},
       },
-      // TODO: replace with instructions relevant to your API's domain
+      // CUSTOMIZE: replace with instructions relevant to your API's domain
       instructions: [
         "You are connected to a REST API via MCP tools.",
         "Use list_items to browse inventory, get_item for details.",
