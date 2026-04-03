@@ -6,3 +6,6 @@ build/
 tests/adversarial/report.json
 __pycache__/
 models/
+.claude/
+.ruff_cache/
+.pytest_cache/
