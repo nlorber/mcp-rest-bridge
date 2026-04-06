@@ -104,4 +104,32 @@ describe("HTTP Transport", () => {
     expect(Array.isArray(result.tools)).toBe(true);
     expect(result.tools).toHaveLength(0);
   });
+
+  it("rate limiter returns 429 when token bucket is exhausted", async () => {
+    // The server is configured with maxTokens: 100, refillRatePerSec: 10.
+    // Send enough raw POST requests to /mcp to exhaust the bucket, then
+    // verify we get a 429 response. We use raw fetch instead of the MCP
+    // client to avoid session/protocol overhead and to inspect status codes directly.
+    const results: number[] = [];
+    for (let i = 0; i < 105; i++) {
+      const res = await fetch(`${BASE_URL}/mcp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: i }),
+      });
+      results.push(res.status);
+    }
+
+    expect(results).toContain(429);
+
+    // Verify the 429 response includes Retry-After header
+    const lastRes = await fetch(`${BASE_URL}/mcp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 999 }),
+    });
+    if (lastRes.status === 429) {
+      expect(lastRes.headers.has("retry-after")).toBe(true);
+    }
+  });
 });

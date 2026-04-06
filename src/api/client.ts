@@ -36,10 +36,16 @@ export class HttpClient {
   }
 
   async delete(path: string): Promise<void> {
-    await this.request<void>("DELETE", path);
+    await this.send("DELETE", path);
   }
 
   private async request<T>(method: string, path: string, options?: RequestOptions): Promise<T> {
+    const response = await this.send(method, path, options);
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  }
+
+  private async send(method: string, path: string, options?: RequestOptions): Promise<Response> {
     const token = await this.tokenManager.getToken();
     const url = this.buildUrl(path, options?.params);
 
@@ -57,18 +63,15 @@ export class HttpClient {
 
     if (!response.ok) {
       const body = await response.text();
-      const error = new HttpError(response.status, body, method, path);
       this.logger.error("HTTP request failed", {
         method,
         path,
         status: response.status,
       });
-      throw error;
+      throw new HttpError(response.status, body, method, path);
     }
 
-    if (response.status === 204) return undefined as T;
-
-    return (await response.json()) as T;
+    return response;
   }
 
   private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
