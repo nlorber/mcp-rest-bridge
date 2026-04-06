@@ -85,7 +85,9 @@ src/
 │   └── categories/           # Read: list, get
 ├── transport/
 │   ├── stdio.ts              # Stdio transport
-│   └── http.ts               # HTTP transport with session management
+│   ├── http.ts               # HTTP transport with session management
+│   ├── rate-limiter.ts       # Per-IP token bucket rate limiter
+│   └── request-logger.ts     # Express request logging middleware
 └── utils/
     ├── mcp-error.ts          # MCP error helpers
     ├── timeout.ts            # Per-tool timeout wrapper
@@ -133,6 +135,9 @@ See [docs/SECURITY.md](docs/SECURITY.md) for the full security model. Key featur
 ```bash
 # Unit + integration tests
 npm test
+
+# All checks (typecheck + lint + test + build)
+npm run check
 
 # Adversarial tests (requires ANTHROPIC_API_KEY and RUNNER_MODEL)
 ANTHROPIC_API_KEY=sk-... RUNNER_MODEL=claude-sonnet-4-5 npm run test:adversarial
