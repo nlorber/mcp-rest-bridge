@@ -3,16 +3,32 @@ import { Logger } from "./logger.js";
 import { createMcpServer } from "./server.js";
 import { startStdioTransport } from "./transport/stdio.js";
 import { startHttpTransport } from "./transport/http.js";
+import { registerShutdown } from "./shutdown.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = new Logger(config.LOG_LEVEL);
 
   if (config.MCP_TRANSPORT === "http") {
-    // HTTP mode: each session gets its own Server instance (see startHttpTransport).
-    await startHttpTransport(() => createMcpServer(config, logger), config.MCP_HTTP_PORT, logger);
+    const httpServer = await startHttpTransport(
+      () => createMcpServer(config, logger),
+      config.MCP_HTTP_PORT,
+      logger,
+    );
+    registerShutdown(async () => {
+      await new Promise<void>((resolve) => {
+        httpServer.close(() => resolve());
+        httpServer.closeAllConnections();
+      });
+      logger.info("HTTP server closed");
+    }, logger);
   } else {
-    await startStdioTransport(createMcpServer(config, logger), logger);
+    const server = createMcpServer(config, logger);
+    await startStdioTransport(server, logger);
+    registerShutdown(async () => {
+      await server.close();
+      logger.info("stdio transport closed");
+    }, logger);
   }
 }
 
