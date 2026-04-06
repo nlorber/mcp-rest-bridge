@@ -4,6 +4,7 @@ import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Logger } from "../logger.js";
+import { createRequestLogger } from "./request-logger.js";
 
 /**
  * Start the MCP server with HTTP transport (for web clients, multi-session).
@@ -22,6 +23,7 @@ export function startHttpTransport(
 ): Promise<HttpServer> {
   const app = express();
   app.use(express.json());
+  app.use(createRequestLogger(logger));
 
   const transports = new Map<string, StreamableHTTPServerTransport>();
 
