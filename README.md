@@ -5,7 +5,7 @@
 
 Production-ready MCP server template for wrapping any REST API as a set of tools, prompts, and resources usable by LLMs. Fork, configure, deploy.
 
-> **Note:** This project is an anonymized and rewritten version of a system originally built in a professional context. All proprietary code, company references, and internal API details have been removed. The mock inventory API replaces the original domain.
+This project implements a REST-to-MCP bridge pattern inspired by production use cases.
 
 ## Features
 
