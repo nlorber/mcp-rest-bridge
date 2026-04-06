@@ -14,6 +14,7 @@ async function main(): Promise<void> {
       () => createMcpServer(config, logger),
       config.MCP_HTTP_PORT,
       logger,
+      { maxTokens: config.RATE_LIMIT_MAX_TOKENS, refillRatePerSec: config.RATE_LIMIT_REFILL_RATE },
     );
     registerShutdown(async () => {
       await new Promise<void>((resolve) => {

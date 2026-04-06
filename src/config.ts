@@ -25,6 +25,12 @@ const configSchema = z.object({
 
   /** Cache TTL in ms */
   CACHE_TTL_MS: z.coerce.number().int().positive().default(300_000),
+
+  /** Rate limiter: max burst tokens per IP */
+  RATE_LIMIT_MAX_TOKENS: z.coerce.number().int().positive().default(60),
+
+  /** Rate limiter: token refill rate per second */
+  RATE_LIMIT_REFILL_RATE: z.coerce.number().positive().default(2),
 });
 
 export type Config = z.infer<typeof configSchema>;

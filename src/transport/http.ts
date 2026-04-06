@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Logger } from "../logger.js";
 import { createRequestLogger } from "./request-logger.js";
+import { createRateLimiter } from "./rate-limiter.js";
 
 /**
  * Start the MCP server with HTTP transport (for web clients, multi-session).
@@ -20,10 +21,13 @@ export function startHttpTransport(
   serverFactory: () => Server,
   port: number,
   logger: Logger,
+  rateLimit: { maxTokens: number; refillRatePerSec: number },
 ): Promise<HttpServer> {
   const app = express();
   app.use(express.json());
   app.use(createRequestLogger(logger));
+
+  app.use("/mcp", createRateLimiter(rateLimit));
 
   const transports = new Map<string, StreamableHTTPServerTransport>();
 

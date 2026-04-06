@@ -43,7 +43,10 @@ describe("HTTP Transport", () => {
   const openClients: ConnectedClient[] = [];
 
   beforeAll(async () => {
-    httpServer = await startHttpTransport(serverFactory, TEST_PORT, new Logger("error"));
+    httpServer = await startHttpTransport(serverFactory, TEST_PORT, new Logger("error"), {
+      maxTokens: 100,
+      refillRatePerSec: 10,
+    });
   });
 
   afterAll(
