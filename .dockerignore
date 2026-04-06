@@ -1,0 +1,13 @@
+node_modules
+build
+.git
+.env
+*.md
+!README.md
+tests
+docs
+.github
+.prettierrc
+eslint.config.js
+vitest.config.ts
+FIXES.md
