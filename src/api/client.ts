@@ -46,32 +46,59 @@ export class HttpClient {
   }
 
   private async send(method: string, path: string, options?: RequestOptions): Promise<Response> {
-    const token = await this.tokenManager.getToken();
-    const url = this.buildUrl(path, options?.params);
+    const maxRetries = 3;
 
-    this.logger.debug("HTTP request", { method, url });
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const token = await this.tokenManager.getToken();
+      const url = this.buildUrl(path, options?.params);
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: options?.body ? JSON.stringify(options.body) : undefined,
-      signal: AbortSignal.timeout(this.timeoutMs),
-    });
+      this.logger.debug("HTTP request", { method, url, attempt });
 
-    if (!response.ok) {
-      const body = await response.text();
-      this.logger.error("HTTP request failed", {
-        method,
-        path,
-        status: response.status,
-      });
-      throw new HttpError(response.status, body, method, path);
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: options?.body ? JSON.stringify(options.body) : undefined,
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch (error) {
+        if (attempt < maxRetries && !(error instanceof DOMException && error.name === "TimeoutError")) {
+          this.logger.warn("HTTP request failed, retrying", { method, path, attempt, error: String(error) });
+          await this.backoff(attempt);
+          continue;
+        }
+        throw error;
+      }
+
+      if (response.status >= 500 && attempt < maxRetries) {
+        this.logger.warn("HTTP 5xx, retrying", { method, path, status: response.status, attempt });
+        await this.backoff(attempt);
+        continue;
+      }
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.error("HTTP request failed", {
+          method,
+          path,
+          status: response.status,
+        });
+        throw new HttpError(response.status, body, method, path);
+      }
+
+      return response;
     }
 
-    return response;
+    throw new Error(`Unreachable: exhausted ${maxRetries} retries`);
+  }
+
+  private backoff(attempt: number): Promise<void> {
+    const ms = 100 * Math.pow(2, attempt);
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
