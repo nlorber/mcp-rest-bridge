@@ -1,7 +1,7 @@
 # mcp-rest-bridge
 
 [![CI](https://github.com/nlorber/mcp-rest-bridge/actions/workflows/test.yml/badge.svg)](https://github.com/nlorber/mcp-rest-bridge/actions/workflows/test.yml)
-![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nlorber/658807b3d9251dbce468b6c738ccd10d/raw/coverage-mcp-rest-bridge.json)
 
 Production-grade MCP server template for wrapping any REST API as a set of tools, prompts, and resources usable by LLMs. Fork, configure, deploy.
 

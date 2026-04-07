@@ -20,5 +20,27 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - name: Test with coverage
+        run: npx vitest run --coverage
+
+      - name: Extract coverage
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: coverage
+        run: |
+          COVERAGE=$(node -e "const c = JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8')); console.log(Math.round(c.total.lines.pct))")
+          echo "percentage=$COVERAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: coverage-mcp-rest-bridge.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.percentage }}%
+          valColorRange: ${{ steps.coverage.outputs.percentage }}
+          minColorRange: 50
+          maxColorRange: 90
+
       - run: npm run build
