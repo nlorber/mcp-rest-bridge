@@ -8,6 +8,7 @@ export default defineConfig({
     exclude: ["tests/adversarial/**"],
     coverage: {
       provider: "v8",
+      reporter: ["text", "json-summary"],
       include: ["src/**/*.ts"],
       exclude: ["src/index.ts"],
       thresholds: {
