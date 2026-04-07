@@ -69,7 +69,6 @@ function zodFieldToJsonSchema(field: z.ZodTypeAny): Record<string, unknown> {
       result.items = zodFieldToJsonSchema(def.type as z.ZodTypeAny);
       break;
     default:
-      console.warn(`[zod-helpers] Unrecognized Zod type "${def.typeName}", falling back to string`);
       result.type = "string";
   }
 

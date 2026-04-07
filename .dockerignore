@@ -10,4 +10,3 @@ docs
 .prettierrc
 eslint.config.js
 vitest.config.ts
-FIXES.md

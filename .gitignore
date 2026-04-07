@@ -5,9 +5,4 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 tests/adversarial/report.json
-__pycache__/
-models/
 .claude/
-docs/superpowers/
-.ruff_cache/
-.pytest_cache/
