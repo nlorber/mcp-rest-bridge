@@ -8,6 +8,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "prebuild": "rm -rf build",
     "build": "tsc",
     "start": "node build/index.js",
     "start:mock": "node build/mock-api/server.js",
