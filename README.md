@@ -57,6 +57,17 @@ npm test
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    LLM[LLM Client] -->|stdio / HTTP| SRV[MCP Server\ntools · prompts · resources]
+    SRV -->|JWT auth\nauto-refresh| API[REST API]
+    SRV --> FLT[Allowlist Filter\nfield-level protection]
+    SRV --> INS[Response Instructions\nembedded LLM guidance]
+    ADV[Adversarial Tests\n22 scenarios · LLM-as-judge] -.-> SRV
+```
+
+## Project Structure
+
 ```
 src/
 ├── index.ts                  # Entrypoint — transport selection
