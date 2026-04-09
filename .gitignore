@@ -6,3 +6,7 @@ coverage/
 .DS_Store
 tests/adversarial/report.json
 .claude/
+docs/superpowers/
+
+# Local dev config for Claude Code
+AGENTS.md
