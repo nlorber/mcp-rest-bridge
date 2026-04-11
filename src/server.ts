@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   ListToolsRequestSchema,
@@ -9,6 +12,12 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Config } from "./config.js";
 import type { Logger } from "./logger.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, "../package.json"), "utf-8")) as {
+  name: string;
+  version: string;
+};
 import { getTools } from "./protocol/tools/registry.js";
 import { createCallToolHandler } from "./protocol/tools/handler.js";
 import { handleListPrompts, handleGetPrompt } from "./protocol/prompts/handler.js";
@@ -39,8 +48,8 @@ export function createMcpServer(config: Config, logger: Logger): Server {
 
   const server = new Server(
     {
-      name: "mcp-rest-bridge",
-      version: "1.0.0",
+      name: pkg.name,
+      version: pkg.version,
     },
     {
       capabilities: {
@@ -114,7 +123,7 @@ export function createMcpServer(config: Config, logger: Logger): Server {
     }
   });
 
-  logger.info("MCP server created", { name: "mcp-rest-bridge", version: "1.0.0" });
+  logger.info("MCP server created", { name: pkg.name, version: pkg.version });
 
   return server;
 }
