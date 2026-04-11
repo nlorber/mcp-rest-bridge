@@ -94,6 +94,7 @@ export class HttpClient {
       return response;
     }
 
+    // Every loop iteration returns, throws, or continues — this satisfies TypeScript's control flow
     throw new Error(`Unreachable: exhausted ${MAX_RETRIES} retries`);
   }
 
