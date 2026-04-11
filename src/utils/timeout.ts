@@ -33,7 +33,7 @@ export async function withTimeout<T>(
 /**
  * Per-tool timeout overrides. Tools not listed here use the default.
  */
-export const TOOL_TIMEOUTS: Record<string, number> = {
+const TOOL_TIMEOUTS: Record<string, number> = {
   // Heavy tools can get longer timeouts
   // e.g. "generate_report": 120_000,
 };
