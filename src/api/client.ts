@@ -1,6 +1,9 @@
 import type { TokenManager } from "./auth/token-manager.js";
 import type { Logger } from "../logger.js";
 
+const MAX_RETRIES = 3;
+const BACKOFF_BASE_MS = 100;
+
 interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
@@ -46,9 +49,7 @@ export class HttpClient {
   }
 
   private async send(method: string, path: string, options?: RequestOptions): Promise<Response> {
-    const maxRetries = 3;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const token = await this.tokenManager.getToken();
       const url = this.buildUrl(path, options?.params);
 
@@ -66,7 +67,7 @@ export class HttpClient {
           signal: AbortSignal.timeout(this.timeoutMs),
         });
       } catch (error) {
-        if (attempt < maxRetries && !(error instanceof DOMException && error.name === "TimeoutError")) {
+        if (attempt < MAX_RETRIES && !(error instanceof DOMException && error.name === "TimeoutError")) {
           this.logger.warn("HTTP request failed, retrying", { method, path, attempt, error: String(error) });
           await this.backoff(attempt);
           continue;
@@ -74,7 +75,7 @@ export class HttpClient {
         throw error;
       }
 
-      if (response.status >= 500 && attempt < maxRetries) {
+      if (response.status >= 500 && attempt < MAX_RETRIES) {
         this.logger.warn("HTTP 5xx, retrying", { method, path, status: response.status, attempt });
         await this.backoff(attempt);
         continue;
@@ -93,11 +94,11 @@ export class HttpClient {
       return response;
     }
 
-    throw new Error(`Unreachable: exhausted ${maxRetries} retries`);
+    throw new Error(`Unreachable: exhausted ${MAX_RETRIES} retries`);
   }
 
   private backoff(attempt: number): Promise<void> {
-    const ms = 100 * Math.pow(2, attempt);
+    const ms = BACKOFF_BASE_MS * Math.pow(2, attempt);
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
