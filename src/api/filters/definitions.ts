@@ -23,7 +23,7 @@ const ITEM_DETAIL_FIELDS = [
 
 const CATEGORY_LIST_FIELDS = ["id", "name", "description", "item_count"];
 
-const CATEGORY_DETAIL_FIELDS = [...CATEGORY_LIST_FIELDS];
+const CATEGORY_DETAIL_FIELDS = CATEGORY_LIST_FIELDS;
 
 // Trap fields NOT included: internal_code, sort_order
 
