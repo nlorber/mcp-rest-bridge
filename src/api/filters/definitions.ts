@@ -1,3 +1,5 @@
+import { pickFields } from "./field-filter.js";
+
 /**
  * Field filter definitions per entity and mode (list vs detail).
  * Fields NOT in these lists (e.g. internal_code, supplier_id, cost_price, margin_pct)
@@ -52,13 +54,5 @@ export function createFilter(
   filterName: FilterName,
 ): (entity: Record<string, unknown>) => Record<string, unknown> {
   const fields = FILTER_MAP[filterName];
-  return (entity: Record<string, unknown>) => {
-    const result: Record<string, unknown> = {};
-    for (const field of fields) {
-      if (field in entity) {
-        result[field] = entity[field];
-      }
-    }
-    return result;
-  };
+  return (entity: Record<string, unknown>) => pickFields(entity, fields);
 }

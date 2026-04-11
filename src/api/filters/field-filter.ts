@@ -33,22 +33,3 @@ export function pickFields(
   return result;
 }
 
-/**
- * Filter a single entity using an allowlist.
- */
-export function filterEntity(
-  entity: Record<string, unknown>,
-  allowedFields: string[],
-): Record<string, unknown> {
-  return pickFields(entity, allowedFields);
-}
-
-/**
- * Filter an array of entities using an allowlist.
- */
-export function filterEntityList(
-  entities: unknown[],
-  allowedFields: string[],
-): Record<string, unknown>[] {
-  return entities.map((entity) => filterEntity(entity as Record<string, unknown>, allowedFields));
-}

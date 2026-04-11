@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickFields, filterEntity, filterEntityList } from "../../src/api/filters/field-filter.js";
+import { pickFields } from "../../src/api/filters/field-filter.js";
 import { createFilter, getFilterFields } from "../../src/api/filters/definitions.js";
 
 describe("pickFields", () => {
@@ -27,35 +27,6 @@ describe("pickFields", () => {
     const obj = { id: 1, address: null };
     const result = pickFields(obj, ["id", "address.city"]);
     expect(result).toEqual({ id: 1 });
-  });
-});
-
-describe("filterEntity", () => {
-  it("should filter using an allowlist", () => {
-    const entity = {
-      id: 1,
-      name: "Widget",
-      internal_code: "SKU-123",
-      supplier_id: 4012,
-      cost_price: 10,
-      margin_pct: 50,
-    };
-    const result = filterEntity(entity, ["id", "name"]);
-    expect(result).toEqual({ id: 1, name: "Widget" });
-  });
-});
-
-describe("filterEntityList", () => {
-  it("should filter all entities in a list", () => {
-    const entities = [
-      { id: 1, name: "A", secret: "x" },
-      { id: 2, name: "B", secret: "y" },
-    ];
-    const result = filterEntityList(entities, ["id", "name"]);
-    expect(result).toEqual([
-      { id: 1, name: "A" },
-      { id: 2, name: "B" },
-    ]);
   });
 });
 
