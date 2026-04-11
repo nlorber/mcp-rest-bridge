@@ -14,10 +14,19 @@ import type { Config } from "./config.js";
 import type { Logger } from "./logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(resolve(__dirname, "../package.json"), "utf-8")) as {
-  name: string;
-  version: string;
-};
+// Walk up to find package.json: works both in dev (src/) and build (build/src/)
+function findPackageJson(): string {
+  for (const rel of ["../package.json", "../../package.json"]) {
+    const candidate = resolve(__dirname, rel);
+    try {
+      return readFileSync(candidate, "utf-8");
+    } catch {
+      continue;
+    }
+  }
+  throw new Error("package.json not found relative to " + __dirname);
+}
+const pkg = JSON.parse(findPackageJson()) as { name: string; version: string };
 import { getTools } from "./protocol/tools/registry.js";
 import { createCallToolHandler } from "./protocol/tools/handler.js";
 import { handleListPrompts, handleGetPrompt } from "./protocol/prompts/handler.js";
