@@ -18,10 +18,12 @@ interface LogContext {
  * Supports child loggers with a fixed module prefix.
  */
 export class Logger {
+  private readonly levelName: LogLevel;
   private readonly level: number;
   private readonly module?: string;
 
   constructor(level: LogLevel = "info", module?: string) {
+    this.levelName = level;
     this.level = LEVEL_PRIORITY[level];
     this.module = module;
   }
@@ -29,10 +31,7 @@ export class Logger {
   /** Create a child logger with a module prefix. */
   child(module: string): Logger {
     const prefix = this.module ? `${this.module}:${module}` : module;
-    return new Logger(
-      (Object.entries(LEVEL_PRIORITY).find(([, v]) => v === this.level)?.[0] as LogLevel) ?? "info",
-      prefix,
-    );
+    return new Logger(this.levelName, prefix);
   }
 
   debug(message: string, context?: LogContext): void {
