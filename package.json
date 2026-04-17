@@ -10,7 +10,7 @@
   "scripts": {
     "prebuild": "rm -rf build",
     "build": "tsc",
-    "start": "node --env-file=.env build/index.js",
+    "start": "node --env-file=.env build/src/index.js",
     "start:mock": "node --env-file=.env build/mock-api/server.js",
     "dev": "tsx --env-file=.env src/index.ts",
     "dev:mock": "tsx --env-file=.env mock-api/server.ts",
