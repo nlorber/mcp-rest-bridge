@@ -1,6 +1,12 @@
 /**
  * Pick only the allowed fields from an object.
- * Supports dot-notation for nested fields (e.g. "address.city").
+ *
+ * Supports a single level of dot-notation for nested fields, e.g.
+ * "address.city". Deeper paths like "a.b.c" are not supported and will
+ * be treated as a single nested key lookup on the top-level object.
+ *
+ * Uses own-property checks (`Object.hasOwn`) so prototype-chain fields
+ * are never leaked through the filter.
  */
 export function pickFields(
   obj: Record<string, unknown>,
@@ -11,22 +17,22 @@ export function pickFields(
   for (const field of fields) {
     const dotIndex = field.indexOf(".");
     if (dotIndex === -1) {
-      // Top-level field
-      if (field in obj) {
+      if (Object.hasOwn(obj, field)) {
         result[field] = obj[field];
       }
     } else {
-      // Nested field: "parent.child"
       const topKey = field.slice(0, dotIndex);
       const subKey = field.slice(dotIndex + 1);
-      const nested = obj[topKey];
 
-      if (nested != null && typeof nested === "object") {
-        if (!(topKey in result)) result[topKey] = {};
-        (result[topKey] as Record<string, unknown>)[subKey] = (
-          nested as Record<string, unknown>
-        )[subKey];
-      }
+      if (!Object.hasOwn(obj, topKey)) continue;
+      const nested = obj[topKey];
+      if (nested == null || typeof nested !== "object") continue;
+
+      const nestedObj = nested as Record<string, unknown>;
+      if (!Object.hasOwn(nestedObj, subKey)) continue;
+
+      if (!Object.hasOwn(result, topKey)) result[topKey] = {};
+      (result[topKey] as Record<string, unknown>)[subKey] = nestedObj[subKey];
     }
   }
 
