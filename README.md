@@ -25,7 +25,7 @@ This project implements a REST-to-MCP bridge pattern inspired by production use 
 
 - **Allowlist-based field filtering** — new fields are hidden by default, not exposed. _Blocklists fail open: a new sensitive field is exposed until someone remembers to block it. Allowlists fail closed._
 - **Response instructions embedded in every tool response** — not just the system prompt. _LLMs lose instruction adherence over long conversations; repeating security constraints per response maintains compliance._
-- **Minimal dependency surface** — 3 production deps (MCP SDK, Express, Zod). _Every dependency is an attack surface. For a security-critical bridge between an LLM and a data API, fewer deps means fewer supply-chain risks._
+- **Minimal dependency surface** — 4 production deps (MCP SDK, Express, Zod, jsonwebtoken). _Every dependency is an attack surface. For a security-critical bridge between an LLM and a data API, fewer deps means fewer supply-chain risks._
 - **22-scenario adversarial test suite with LLM-as-judge** — covers injection, escalation, exfiltration, cross-tenant. _Security claims without adversarial testing are marketing. The suite runs against actual Claude to validate real-world attack resistance._
 
 ## Quick Start
