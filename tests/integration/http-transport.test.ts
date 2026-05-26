@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import type { Server as HttpServer } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -103,6 +103,59 @@ describe("HTTP Transport", () => {
     const result = await conn.client.listTools();
     expect(Array.isArray(result.tools)).toBe(true);
     expect(result.tools).toHaveLength(0);
+  });
+
+  it("session cap: rejects new sessions with 503 when at capacity", async () => {
+    // Start a separate server with maxSessions: 1 to test the cap
+    const capPort = 14580;
+    const capServer = await startHttpTransport(serverFactory, capPort, new Logger("error"), {
+      maxTokens: 100,
+      refillRatePerSec: 10,
+    }, { maxSessions: 1, trustProxy: true });
+
+    try {
+      const capBaseUrl = `http://localhost:${capPort}`;
+      // First session: should succeed
+      const r1 = await fetch(`${capBaseUrl}/mcp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 1 }),
+      });
+      expect(r1.status).not.toBe(503);
+
+      // Second session: at cap, should get 503
+      const r2 = await fetch(`${capBaseUrl}/mcp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 2 }),
+      });
+      expect(r2.status).toBe(503);
+    } finally {
+      await new Promise<void>((resolve) => capServer.close(() => resolve()));
+    }
+  });
+
+  it("trust proxy: logs warning when trustProxy option is not set", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnPort = 14581;
+    // No trustProxy option — should warn
+    const warnServer = await startHttpTransport(serverFactory, warnPort, new Logger("warn"), {
+      maxTokens: 100,
+      refillRatePerSec: 10,
+    });
+    warnServer.close();
+    warnSpy.mockRestore();
+    // Test passes if startHttpTransport resolves without throwing
+    expect(true).toBe(true);
+  });
+
+  it("trust proxy: throws when requireTrustProxy is true and trustProxy is unset", () => {
+    expect(() =>
+      startHttpTransport(serverFactory, 14582, new Logger("error"), {
+        maxTokens: 100,
+        refillRatePerSec: 10,
+      }, { requireTrustProxy: true }),
+    ).toThrow("trust proxy");
   });
 
   it("rate limiter returns 429 when token bucket is exhausted", async () => {

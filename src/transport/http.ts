@@ -26,6 +26,20 @@ export interface HttpTransportOptions {
   maxSessions?: number;
   /** Milliseconds before an idle session is evicted (default: 30 min). */
   idleTimeoutMs?: number;
+  /**
+   * Express `trust proxy` setting. Set to `true` (or a specific value) when
+   * running behind a reverse proxy so that `req.ip` reflects the client IP
+   * rather than the proxy IP. Without this, per-IP rate limiting is ineffective.
+   *
+   * When `undefined` (not set), a warning is logged at startup. Set
+   * `requireTrustProxy: true` to fail-closed instead (startup error).
+   */
+  trustProxy?: boolean | string | number;
+  /**
+   * When `true`, the server refuses to start if `trustProxy` is not explicitly
+   * configured. Defaults to `false` (warn-only).
+   */
+  requireTrustProxy?: boolean;
 }
 
 /**
@@ -48,7 +62,22 @@ export function startHttpTransport(
   const maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
 
+  // Trust proxy check: warn or fail-closed if not configured
+  if (options.trustProxy === undefined) {
+    const msg =
+      'HTTP transport: "trust proxy" is not set. ' +
+      "req.ip will reflect the proxy/load-balancer IP, defeating per-IP rate limiting. " +
+      "Set options.trustProxy or enable options.requireTrustProxy to enforce this.";
+    if (options.requireTrustProxy) {
+      throw new Error(msg);
+    }
+    logger.warn(msg);
+  }
+
   const app = express();
+  if (options.trustProxy !== undefined) {
+    app.set("trust proxy", options.trustProxy);
+  }
   app.use(express.json());
   app.use(createRequestLogger(logger));
 
