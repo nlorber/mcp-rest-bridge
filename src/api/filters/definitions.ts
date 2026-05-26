@@ -49,10 +49,15 @@ export function getFilterFields(filterName: FilterName): string[] {
 
 /**
  * Create a filter function for a specific entity/mode.
+ * Accepts any value; arrays and non-object inputs are safe-by-default (return {}).
  */
 export function createFilter(
   filterName: FilterName,
-): (entity: Record<string, unknown>) => Record<string, unknown> {
+): (entity: unknown) => Record<string, unknown> {
   const fields = FILTER_MAP[filterName];
-  return (entity: Record<string, unknown>) => pickFields(entity, fields);
+  return (entity: unknown) => {
+    const result = pickFields(entity, fields);
+    // Array results shouldn't occur at the single-entity level — fail safe
+    return Array.isArray(result) ? {} : result;
+  };
 }

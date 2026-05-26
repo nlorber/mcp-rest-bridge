@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { pickFields } from "../../src/api/filters/field-filter.js";
 import { createFilter, getFilterFields } from "../../src/api/filters/definitions.js";
 
+
 describe("pickFields", () => {
   it("should pick only allowed top-level fields", () => {
     const obj = { id: 1, name: "Test", secret: "hidden", internal_code: "SKU-1" };
@@ -26,6 +27,62 @@ describe("pickFields", () => {
   it("should handle null nested objects", () => {
     const obj = { id: 1, address: null };
     const result = pickFields(obj, ["id", "address.city"]);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  // --- Hardened input handling ---
+
+  it("returns {} for null input (safe-by-default)", () => {
+    expect(pickFields(null, ["id", "name"])).toEqual({});
+  });
+
+  it("returns {} for primitive string input", () => {
+    expect(pickFields("some-string", ["id"])).toEqual({});
+  });
+
+  it("returns {} for numeric primitive input", () => {
+    expect(pickFields(42, ["id"])).toEqual({});
+  });
+
+  it("returns {} for boolean primitive input", () => {
+    expect(pickFields(true, ["id"])).toEqual({});
+  });
+
+  it("recurses over array of objects, filtering each element", () => {
+    const arr = [
+      { id: 1, name: "A", cost_price: 99 },
+      { id: 2, name: "B", cost_price: 50 },
+    ];
+    const result = pickFields(arr, ["id", "name"]);
+    expect(result).toEqual([
+      { id: 1, name: "A" },
+      { id: 2, name: "B" },
+    ]);
+  });
+
+  it("drops non-object elements when input is an array of primitives", () => {
+    const result = pickFields(["hello", "world"], ["id"]);
+    expect(result).toEqual([]);
+  });
+
+  it("drops null elements when input is an array of nulls", () => {
+    const result = pickFields([null, null], ["id"]);
+    expect(result).toEqual([]);
+  });
+
+  it("recurses into nested arrays of objects and strips trap fields", () => {
+    const arr = [{ id: 1, cost_price: 42, name: "Widget" }];
+    const result = pickFields(arr, ["id", "name"]);
+    expect(result).toEqual([{ id: 1, name: "Widget" }]);
+    // Array result must not contain cost_price
+    const asArr = result as Record<string, unknown>[];
+    expect(asArr[0]).not.toHaveProperty("cost_price");
+  });
+
+  it("skips nested array values for dot-notation fields (safe-by-default)", () => {
+    // A field whose nested value is itself an array — should be skipped, not leaked
+    const obj = { id: 1, tags: [{ secret: "x" }] };
+    const result = pickFields(obj, ["id", "tags.secret"]);
     expect(result).toEqual({ id: 1 });
   });
 });

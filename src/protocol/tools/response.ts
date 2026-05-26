@@ -28,8 +28,8 @@ export function toolResponse(data: unknown): CallToolResult {
  * Build a tool response for a single filtered entity.
  */
 export function filteredToolResponse(
-  data: Record<string, unknown>,
-  filterFn: (entity: Record<string, unknown>) => Record<string, unknown>,
+  data: unknown,
+  filterFn: (entity: unknown) => Record<string, unknown>,
 ): CallToolResult {
   return toolResponse(filterFn(data));
 }
@@ -41,9 +41,9 @@ export function filteredListToolResponse(
   items: unknown[],
   meta: { total_count: number; page: number; per_page: number },
   listKey: string,
-  filterFn: (entity: Record<string, unknown>) => Record<string, unknown>,
+  filterFn: (entity: unknown) => Record<string, unknown>,
 ): CallToolResult {
-  const filtered = items.map((item) => filterFn(item as Record<string, unknown>));
+  const filtered = items.map((item) => filterFn(item));
   return toolResponse({
     [listKey]: filtered,
     ...meta,
