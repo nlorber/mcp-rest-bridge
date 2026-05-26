@@ -7,6 +7,27 @@ import type { Logger } from "../logger.js";
 import { createRequestLogger } from "./request-logger.js";
 import { createRateLimiter } from "./rate-limiter.js";
 
+/** Default maximum number of concurrent sessions. */
+const DEFAULT_MAX_SESSIONS = 1000;
+
+/** Default idle timeout: evict sessions inactive for more than 30 minutes. */
+const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+/** How often the idle-eviction sweep runs. */
+const SWEEP_INTERVAL_MS = 60_000;
+
+interface SessionEntry {
+  transport: StreamableHTTPServerTransport;
+  lastActivity: number;
+}
+
+export interface HttpTransportOptions {
+  /** Maximum concurrent sessions (default: 1000). */
+  maxSessions?: number;
+  /** Milliseconds before an idle session is evicted (default: 30 min). */
+  idleTimeoutMs?: number;
+}
+
 /**
  * Start the MCP server with HTTP transport (for web clients, multi-session).
  * Manages sessions via mcp-session-id header.
@@ -22,22 +43,46 @@ export function startHttpTransport(
   port: number,
   logger: Logger,
   rateLimit: { maxTokens: number; refillRatePerSec: number },
+  options: HttpTransportOptions = {},
 ): Promise<HttpServer> {
+  const maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
+  const idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+
   const app = express();
   app.use(express.json());
   app.use(createRequestLogger(logger));
 
   app.use("/mcp", createRateLimiter(rateLimit));
 
-  const transports = new Map<string, StreamableHTTPServerTransport>();
+  const sessions = new Map<string, SessionEntry>();
+
+  // Periodic sweep: evict sessions that have been idle longer than idleTimeoutMs
+  const sweepTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [id, entry] of sessions) {
+      if (now - entry.lastActivity > idleTimeoutMs) {
+        sessions.delete(id);
+        logger.debug("idle session evicted", { sessionId: id });
+      }
+    }
+  }, SWEEP_INTERVAL_MS);
+  sweepTimer.unref();
 
   app.all("/mcp", async (req, res) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-    // Reuse existing session
-    if (sessionId && transports.has(sessionId)) {
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req, res, req.body);
+    // Reuse existing session and refresh its activity timestamp
+    if (sessionId && sessions.has(sessionId)) {
+      const entry = sessions.get(sessionId)!;
+      entry.lastActivity = Date.now();
+      await entry.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Enforce session cap before creating a new session
+    if (sessions.size >= maxSessions) {
+      res.status(503).json({ error: "Server is at session capacity — try again later" });
+      logger.warn("session cap reached, rejecting new session", { maxSessions });
       return;
     }
 
@@ -52,10 +97,10 @@ export function startHttpTransport(
     });
 
     await serverFactory().connect(transport);
-    transports.set(newSessionId, transport);
+    sessions.set(newSessionId, { transport, lastActivity: Date.now() });
 
     transport.onclose = () => {
-      transports.delete(newSessionId);
+      sessions.delete(newSessionId);
       logger.debug("session closed", { sessionId: newSessionId });
     };
 
@@ -64,7 +109,7 @@ export function startHttpTransport(
   });
 
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", sessions: transports.size });
+    res.json({ status: "ok", sessions: sessions.size });
   });
 
   return new Promise((resolve) => {
