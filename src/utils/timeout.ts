@@ -11,20 +11,27 @@ export class TimeoutError extends Error {
 /**
  * Wrap a promise with a timeout. Rejects with TimeoutError if the
  * promise does not resolve within the given duration.
+ *
+ * The returned AbortSignal is aborted when the timeout fires so that
+ * callers can cancel in-flight I/O (e.g. fetch) via the same signal.
  */
 export async function withTimeout<T>(
-  promise: Promise<T>,
+  factory: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,
   operationName: string,
 ): Promise<T> {
+  const controller = new AbortController();
   let timerId: NodeJS.Timeout | undefined;
 
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
-    timerId = setTimeout(() => reject(new TimeoutError(operationName, timeoutMs)), timeoutMs);
+    timerId = setTimeout(() => {
+      controller.abort();
+      reject(new TimeoutError(operationName, timeoutMs));
+    }, timeoutMs);
   });
 
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    return await Promise.race([factory(controller.signal), timeoutPromise]);
   } finally {
     if (timerId) clearTimeout(timerId);
   }

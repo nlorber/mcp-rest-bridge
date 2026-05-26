@@ -32,12 +32,13 @@ export function updateItemTool(httpClient: HttpClient): ToolDefinition {
         "Update an existing item. Only provided fields will be changed.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const input = inputSchema.parse(args);
       const { id, ...updates } = input;
       try {
         const data = await httpClient.patch<Record<string, unknown>>(`/items/${id}`, {
           body: updates,
+          signal,
         });
         return filteredToolResponse(data, filter);
       } catch (error) {

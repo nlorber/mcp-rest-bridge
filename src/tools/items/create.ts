@@ -31,11 +31,12 @@ export function createItemTool(httpClient: HttpClient): ToolDefinition {
         "Create a new item. Requires name, category_id, and price at minimum.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const input = inputSchema.parse(args);
       try {
         const data = await httpClient.post<Record<string, unknown>>("/items", {
           body: input,
+          signal,
         });
         return filteredToolResponse(data, filter);
       } catch (error) {

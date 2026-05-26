@@ -8,6 +8,8 @@ import type { Logger } from "../../logger.js";
 /**
  * Create the CallTool dispatcher.
  * Routes requests to the correct handler, applies timeout, and normalizes errors.
+ * Threads an AbortSignal into each handler so that timed-out operations can
+ * cancel in-flight I/O rather than just being abandoned.
  */
 export function createCallToolHandler(defaultTimeoutMs: number, logger: Logger) {
   return async (request: CallToolRequest): Promise<CallToolResult> => {
@@ -20,7 +22,7 @@ export function createCallToolHandler(defaultTimeoutMs: number, logger: Logger) 
     }
 
     try {
-      return await withTimeout(handler(args), timeout, name);
+      return await withTimeout((signal) => handler(args, signal), timeout, name);
     } catch (error) {
       return handleToolError(error, name, timeout, logger);
     }

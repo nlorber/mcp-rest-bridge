@@ -22,10 +22,10 @@ export function getItemTool(httpClient: HttpClient): ToolDefinition {
       description: "Get detailed information about a specific item by its ID.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const input = inputSchema.parse(args);
       try {
-        const data = await httpClient.get<Record<string, unknown>>(`/items/${input.id}`);
+        const data = await httpClient.get<Record<string, unknown>>(`/items/${input.id}`, { signal });
         return filteredToolResponse(data, filter);
       } catch (error) {
         mapApiError(error);

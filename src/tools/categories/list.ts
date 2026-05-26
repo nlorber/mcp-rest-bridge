@@ -29,7 +29,7 @@ export function listCategoriesTool(httpClient: HttpClient): ToolDefinition {
       description: "List all available categories.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async () => {
+    handler: async (_args, _signal) => {
       try {
         const data = await cache.get();
 

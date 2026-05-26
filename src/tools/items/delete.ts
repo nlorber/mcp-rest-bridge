@@ -19,10 +19,10 @@ export function deleteItemTool(httpClient: HttpClient): ToolDefinition {
       description: "Delete an item by its ID. This action is irreversible.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const input = inputSchema.parse(args);
       try {
-        await httpClient.delete(`/items/${input.id}`);
+        await httpClient.delete(`/items/${input.id}`, { signal });
         return toolResponse({ success: true, deleted_id: input.id });
       } catch (error) {
         mapApiError(error);

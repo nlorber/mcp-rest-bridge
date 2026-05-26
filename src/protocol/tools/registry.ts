@@ -2,10 +2,12 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * A tool definition bundles the MCP tool metadata with its execution handler.
+ * The handler receives the parsed arguments and an AbortSignal that fires when
+ * the tool-level timeout elapses, allowing in-flight I/O to be cancelled.
  */
 export interface ToolDefinition {
   tool: Tool;
-  handler: (args: Record<string, unknown>) => Promise<CallToolResult>;
+  handler: (args: Record<string, unknown>, signal: AbortSignal) => Promise<CallToolResult>;
 }
 
 const tools = new Map<string, ToolDefinition>();
@@ -29,7 +31,7 @@ export function getTools(): Tool[] {
  */
 export function getToolHandler(
   name: string,
-): ((args: Record<string, unknown>) => Promise<CallToolResult>) | undefined {
+): ((args: Record<string, unknown>, signal: AbortSignal) => Promise<CallToolResult>) | undefined {
   return tools.get(name)?.handler;
 }
 

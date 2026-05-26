@@ -37,7 +37,7 @@ export function listItemsTool(httpClient: HttpClient): ToolDefinition {
         "Returns a paginated list of items with their key attributes.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const input = inputSchema.parse(args);
       try {
         const data = await httpClient.get<{
@@ -53,6 +53,7 @@ export function listItemsTool(httpClient: HttpClient): ToolDefinition {
             category_id: input.category_id,
             status: input.status,
           },
+          signal,
         });
 
         return filteredListToolResponse(

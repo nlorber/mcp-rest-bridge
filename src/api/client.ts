@@ -7,6 +7,8 @@ const BACKOFF_BASE_MS = 100;
 interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
+  /** AbortSignal to cancel the request (e.g. propagated from a tool timeout). */
+  signal?: AbortSignal;
 }
 
 /**
@@ -38,8 +40,8 @@ export class HttpClient {
     return this.request<T>("PATCH", path, options);
   }
 
-  async delete(path: string): Promise<void> {
-    await this.send("DELETE", path);
+  async delete(path: string, options?: Pick<RequestOptions, "signal">): Promise<void> {
+    await this.send("DELETE", path, options);
   }
 
   private async request<T>(method: string, path: string, options?: RequestOptions): Promise<T> {
@@ -55,6 +57,14 @@ export class HttpClient {
 
       this.logger.debug("HTTP request", { method, url, attempt });
 
+      // Combine the per-request HTTP timeout with any caller-provided signal
+      // (e.g. propagated from a tool-level AbortController). Either source
+      // cancels the fetch when it fires.
+      const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
+      const signal = options?.signal
+        ? AbortSignal.any([timeoutSignal, options.signal])
+        : timeoutSignal;
+
       let response: Response;
       try {
         response = await fetch(url, {
@@ -64,7 +74,7 @@ export class HttpClient {
             "Content-Type": "application/json",
           },
           body: options?.body ? JSON.stringify(options.body) : undefined,
-          signal: AbortSignal.timeout(this.timeoutMs),
+          signal,
         });
       } catch (error) {
         if (attempt < MAX_RETRIES && !(error instanceof DOMException && error.name === "TimeoutError")) {
