@@ -79,6 +79,20 @@ describe("TokenManager", () => {
     await expect(tm.getToken()).rejects.toThrow("Authentication failed");
   });
 
+  it("should surface a hung fetch as a clean auth timeout error", async () => {
+    // Simulate a hung fetch by rejecting with a DOMException TimeoutError
+    const timeoutError = new DOMException("The operation was aborted", "TimeoutError");
+    globalThis.fetch = vi.fn().mockRejectedValue(timeoutError) as unknown as typeof fetch;
+
+    const tm = new TokenManager(
+      "http://localhost:3100",
+      { username: "admin", password: "pass" },
+      logger,
+      100,
+    );
+    await expect(tm.getToken()).rejects.toThrow("Authentication timed out after 100ms");
+  });
+
   describe("decodePayload", () => {
     it("should decode a JWT payload", () => {
       // Create a simple JWT with known payload

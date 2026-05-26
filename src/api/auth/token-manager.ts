@@ -20,6 +20,9 @@ interface TokenResponse {
 /** Refresh token 5 minutes before expiry. */
 const REFRESH_BUFFER_SECONDS = 300;
 
+/** Default timeout for token acquisition requests. */
+const DEFAULT_AUTH_TIMEOUT_MS = 5000;
+
 /**
  * Manages JWT token lifecycle: acquire, cache, auto-refresh, inflight dedup.
  */
@@ -29,11 +32,18 @@ export class TokenManager {
   private credentials: Credentials;
   private readonly baseUrl: string;
   private readonly logger: Logger;
+  private readonly authTimeoutMs: number;
 
-  constructor(baseUrl: string, credentials: Credentials, logger: Logger) {
+  constructor(
+    baseUrl: string,
+    credentials: Credentials,
+    logger: Logger,
+    authTimeoutMs = DEFAULT_AUTH_TIMEOUT_MS,
+  ) {
     this.baseUrl = baseUrl;
     this.credentials = credentials;
     this.logger = logger.child("token-manager");
+    this.authTimeoutMs = authTimeoutMs;
   }
 
   /**
@@ -98,14 +108,23 @@ export class TokenManager {
     const url = `${this.baseUrl}/auth/token`;
     this.logger.debug("Acquiring token", { url });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: this.credentials.username,
-        password: this.credentials.password,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: this.credentials.username,
+          password: this.credentials.password,
+        }),
+        signal: AbortSignal.timeout(this.authTimeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        throw new Error(`Authentication timed out after ${this.authTimeoutMs}ms`);
+      }
+      throw err;
+    }
 
     if (!response.ok) {
       const body = await response.text();
