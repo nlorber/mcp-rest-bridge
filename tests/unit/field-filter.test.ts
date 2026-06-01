@@ -85,6 +85,54 @@ describe("pickFields", () => {
     const result = pickFields(obj, ["id", "tags.secret"]);
     expect(result).toEqual({ id: 1 });
   });
+
+  // --- Multi-level (arbitrary depth) object paths ---
+
+  it("picks a three-level nested field and strips siblings at each level", () => {
+    const obj = {
+      id: 1,
+      a: { b: { c: 1, d: 2, secret: "x" }, other: "y" },
+    };
+    const result = pickFields(obj, ["id", "a.b.c"]);
+    expect(result).toEqual({ id: 1, a: { b: { c: 1 } } });
+  });
+
+  it("merges multiple paths that share a prefix", () => {
+    const obj = {
+      user: {
+        name: "Ada",
+        password: "hunter2",
+        address: { city: "Paris", zip: "75001", lat: 48.8 },
+      },
+    };
+    const result = pickFields(obj, ["user.name", "user.address.city"]);
+    expect(result).toEqual({ user: { name: "Ada", address: { city: "Paris" } } });
+  });
+
+  it("omits the key entirely when a deep path matches nothing", () => {
+    const obj = { id: 1, a: { b: { other: 1 } } };
+    const result = pickFields(obj, ["id", "a.b.c"]);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("skips at depth when an intermediate value is an array (safe-by-default)", () => {
+    const obj = { id: 1, a: { b: [{ c: 1 }] } };
+    const result = pickFields(obj, ["id", "a.b.c"]);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("skips at depth when an intermediate value is null", () => {
+    const obj = { id: 1, a: { b: null } };
+    const result = pickFields(obj, ["id", "a.b.c"]);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("does not descend or assign through __proto__ paths", () => {
+    const obj = { id: 1 };
+    const result = pickFields(obj, ["id", "__proto__.polluted"]);
+    expect(result).toEqual({ id: 1 });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
 });
 
 describe("item field definitions", () => {
