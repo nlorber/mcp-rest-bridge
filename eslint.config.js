@@ -21,6 +21,13 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["build/", "node_modules/", "coverage/", "eslint.config.js", "vitest.config.ts"],
+    ignores: [
+      "build/",
+      "node_modules/",
+      "coverage/",
+      "scripts/",
+      "eslint.config.js",
+      "vitest.config.ts",
+    ],
   },
 );
