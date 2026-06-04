@@ -17,7 +17,7 @@ This project implements a REST-to-MCP bridge pattern inspired by production use 
 - **JWT auth** with auto-refresh, caching, and inflight request deduplication
 - **Field filtering** — allowlist-based data sanitization strips internal fields before LLM sees them
 - **LLM response instructions** — embedded guidance prevents the LLM from exposing sensitive data
-- **LLM-as-judge adversarial tests** — 22 attack scenarios across 6 security categories
+- **LLM-as-judge adversarial tests** — 26 attack scenarios across 7 security categories
 - **Built-in mock API** — clone and run in 5 minutes, no external dependencies
 - **Low-level MCP API** — uses `Server` + `setRequestHandler` to demonstrate protocol-level understanding
 
@@ -26,7 +26,7 @@ This project implements a REST-to-MCP bridge pattern inspired by production use 
 - **Allowlist-based field filtering** — new fields are hidden by default, not exposed. _Blocklists fail open: a new sensitive field is exposed until someone remembers to block it. Allowlists fail closed._
 - **Response instructions embedded in every tool response** — not just the system prompt. _LLMs lose instruction adherence over long conversations; repeating security constraints per response maintains compliance._
 - **Minimal dependency surface** — 4 production deps (MCP SDK, Express, Zod, jsonwebtoken). _Every dependency is an attack surface. For a security-critical bridge between an LLM and a data API, fewer deps means fewer supply-chain risks._
-- **22-scenario adversarial test suite with LLM-as-judge** — covers injection, escalation, exfiltration, cross-tenant. _Security claims without adversarial testing are marketing. The suite runs against actual Claude to validate real-world attack resistance._
+- **26-scenario adversarial test suite with LLM-as-judge** — covers injection, escalation, exfiltration, cross-tenant, and nested-field bypass. _Security claims without adversarial testing are marketing. The suite runs against actual Claude to validate real-world attack resistance._
 
 ## Quick Start
 
@@ -70,7 +70,7 @@ flowchart LR
     SRV -->|JWT auth\nauto-refresh| API[REST API]
     SRV --> FLT[Allowlist Filter\nfield-level protection]
     SRV --> INS[Response Instructions\nembedded LLM guidance]
-    ADV[Adversarial Tests\n22 scenarios · LLM-as-judge] -.-> SRV
+    ADV[Adversarial Tests\n26 scenarios · LLM-as-judge] -.-> SRV
 ```
 
 ## Project Structure
@@ -146,10 +146,13 @@ src/
 
 See [docs/SECURITY.md](docs/SECURITY.md) for the full security model. Key features:
 
-1. **Field filtering** — allowlist-based, strips internal fields (`internal_code`, `supplier_id`, `cost_price`, `margin_pct`)
-2. **Response instructions** — embedded guidance in every tool response
+1. **Field filtering** — allowlist-based, strips internal fields (`internal_code`, `supplier_id`, `cost_price`, `margin_pct`) including nested objects/arrays, with prototype-pollution hardening
+2. **Response instructions** — embedded guidance in every tool response (overridable per tool)
 3. **Server instructions** — LLM guidance in MCP capabilities
-4. **Adversarial testing** — automated security validation
+4. **Input validation** — Zod schemas on every tool argument
+5. **Credential security** — JWT auto-refresh; secrets never reach the LLM
+6. **Error handling** — internal details and stack traces are never exposed to the LLM
+7. **Adversarial testing** — 26-scenario LLM-as-judge suite across 7 categories
 
 ## Testing
 

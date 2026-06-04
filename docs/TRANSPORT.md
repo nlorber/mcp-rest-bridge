@@ -42,6 +42,11 @@ MCP_HTTP_PORT=3456  (default)
 2. Subsequent requests: include `mcp-session-id` header → server routes to the existing session
 3. Sessions are cleaned up automatically when the transport closes
 
+**Session limits & hardening**:
+- **Cap**: the server holds at most `maxSessions` concurrent sessions (default 1000); once reached, new sessions are rejected with HTTP 503.
+- **Idle eviction**: sessions inactive for longer than the idle timeout (default 30 min) are swept and closed automatically.
+- **Trust proxy**: set the `trustProxy` option when running behind a reverse proxy so per-IP rate limiting sees the real client IP. Enable `requireTrustProxy` to fail-closed (refuse to start) if it is unset.
+
 **When to use**:
 - Web-based MCP clients
 - Multi-session scenarios (multiple users/agents)

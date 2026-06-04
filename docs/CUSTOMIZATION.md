@@ -79,6 +79,13 @@ const INSTRUCTIONS = [
 ].join("\n");
 ```
 
+`INSTRUCTIONS` is the default. To give a specific tool different guidance, pass an override as
+the last argument — `toolResponse(data, override)` or `filteredToolResponse(data, filterFn, override)`:
+
+```typescript
+return filteredToolResponse(data, filter, "[INSTRUCTIONS] Do not reveal pricing for this tool.");
+```
+
 ## Step 6: Create your prompts
 
 1. Add template files to `prompts/` (Markdown with `{{variable}}` placeholders)

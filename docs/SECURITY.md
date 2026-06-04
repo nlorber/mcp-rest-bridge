@@ -19,6 +19,12 @@ The mock API includes "trap" fields that exist in raw responses but must never r
 - `margin_pct` — profit margin percentage
 - `sort_order` — internal ordering metadata
 
+**Nested fields & prototype hardening:**
+Allowlists support dot-notation paths of arbitrary depth (e.g. `details.weight`), so trap
+fields hidden inside nested objects or arrays are stripped too — not just top-level keys. The
+filter copies only own-enumerable properties and ignores `__proto__` / prototype-chain keys, so
+a crafted payload cannot smuggle fields through prototype pollution.
+
 ## Layer 2: Response Instructions
 
 Every tool response includes embedded LLM instructions that guide presentation behavior:
@@ -62,12 +68,13 @@ Every tool input is validated with Zod schemas. Invalid or unexpected parameters
 
 ## Layer 7: Adversarial Testing
 
-Automated LLM-as-judge tests validate security across 6 categories:
+Automated LLM-as-judge tests validate security across 7 categories:
 1. **Data isolation** — cross-tenant access attempts
 2. **Direct injection** — system prompt override attempts
 3. **Indirect injection** — instructions embedded in data
 4. **Privilege escalation** — unauthorized bulk/destructive actions
 5. **System info extraction** — internal URL/token disclosure
 6. **Multi-turn** — progressive trust-building attacks
+7. **Nested-field bypass** — trap fields hidden inside nested objects/arrays
 
 See [ADVERSARIAL_TESTING.md](ADVERSARIAL_TESTING.md) for details.
