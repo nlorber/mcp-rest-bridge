@@ -43,6 +43,24 @@ export interface HttpTransportOptions {
 }
 
 /**
+ * Evict sessions idle longer than idleTimeoutMs. Extracted from the interval
+ * callback so the sweep can be unit-tested without the 60s timer.
+ */
+export function sweepIdleSessions<T extends { lastActivity: number }>(
+  sessions: Map<string, T>,
+  now: number,
+  idleTimeoutMs: number,
+  logger: Logger,
+): void {
+  for (const [id, entry] of sessions) {
+    if (now - entry.lastActivity > idleTimeoutMs) {
+      sessions.delete(id);
+      logger.debug("idle session evicted", { sessionId: id });
+    }
+  }
+}
+
+/**
  * Start the MCP server with HTTP transport (for web clients, multi-session).
  * Manages sessions via mcp-session-id header.
  *
@@ -87,13 +105,7 @@ export function startHttpTransport(
 
   // Periodic sweep: evict sessions that have been idle longer than idleTimeoutMs
   const sweepTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [id, entry] of sessions) {
-      if (now - entry.lastActivity > idleTimeoutMs) {
-        sessions.delete(id);
-        logger.debug("idle session evicted", { sessionId: id });
-      }
-    }
+    sweepIdleSessions(sessions, Date.now(), idleTimeoutMs, logger);
   }, SWEEP_INTERVAL_MS);
   sweepTimer.unref();
 
