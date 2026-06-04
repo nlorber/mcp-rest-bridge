@@ -14,7 +14,7 @@
     "start:mock": "node --env-file=.env build/mock-api/server.js",
     "dev": "tsx --env-file=.env src/index.ts",
     "dev:mock": "tsx --env-file=.env mock-api/server.ts",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:adversarial": "tsx --env-file=.env tests/adversarial/runner.ts",
     "lint": "eslint .",
