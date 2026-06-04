@@ -136,7 +136,8 @@ describe("HTTP Transport", () => {
   });
 
   it("trust proxy: logs warning when trustProxy option is not set", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Logger writes to process.stderr (not console.warn), so spy there.
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     const warnPort = 14581;
     // No trustProxy option — should warn
     const warnServer = await startHttpTransport(serverFactory, warnPort, new Logger("warn"), {
@@ -144,9 +145,10 @@ describe("HTTP Transport", () => {
       refillRatePerSec: 10,
     });
     warnServer.close();
-    warnSpy.mockRestore();
-    // Test passes if startHttpTransport resolves without throwing
-    expect(true).toBe(true);
+    const output = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
+    stderrSpy.mockRestore();
+    expect(output).toContain("trust proxy");
+    expect(output).toContain("not set");
   });
 
   it("trust proxy: throws when requireTrustProxy is true and trustProxy is unset", () => {
