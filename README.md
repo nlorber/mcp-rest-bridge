@@ -66,11 +66,11 @@ npm test
 
 ```mermaid
 flowchart LR
-    LLM[LLM Client] -->|stdio / HTTP| SRV[MCP Server\ntools · prompts · resources]
-    SRV -->|JWT auth\nauto-refresh| API[REST API]
-    SRV --> FLT[Allowlist Filter\nfield-level protection]
-    SRV --> INS[Response Instructions\nembedded LLM guidance]
-    ADV[Adversarial Tests\n26 scenarios · LLM-as-judge] -.-> SRV
+    LLM[LLM Client] -->|stdio / HTTP| SRV[MCP Server<br/>tools · prompts · resources]
+    SRV -->|JWT auth<br/>auto-refresh| API[REST API]
+    SRV --> FLT[Allowlist Filter<br/>field-level protection]
+    SRV --> INS[Response Instructions<br/>embedded LLM guidance]
+    ADV[Adversarial Tests<br/>26 scenarios · LLM-as-judge] -.-> SRV
 ```
 
 ## Project Structure
