@@ -47,6 +47,8 @@ MCP_HTTP_PORT=3456  (default)
 - **Idle eviction**: sessions inactive for longer than the idle timeout (default 30 min) are swept and closed automatically.
 - **Trust proxy**: set the `trustProxy` option when running behind a reverse proxy so per-IP rate limiting sees the real client IP. Enable `requireTrustProxy` to fail-closed (refuse to start) if it is unset.
 
+**Authentication**: The HTTP transport is **not itself authenticated** — anyone who can reach `/mcp` drives the bridge with full tool access (it is protected only by the rate limiter). This is by design: stdio is the primary, process-trusted transport, and the HTTP transport assumes a **trusted network** with authentication and TLS terminated at a reverse proxy (the same proxy that supplies `trustProxy`). Do not expose it directly to untrusted clients. To authenticate it yourself, put it behind a proxy that enforces auth, or add a bearer-token check in the Express app ahead of the `app.all("/mcp", …)` handler in `src/transport/http.ts`, next to the rate limiter. This inbound transport auth is distinct from the *upstream* API credential the bridge manages (see [SECURITY.md](SECURITY.md#layer-5-credential-security) Layer 5).
+
 **When to use**:
 - Web-based MCP clients
 - Multi-session scenarios (multiple users/agents)

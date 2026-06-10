@@ -59,6 +59,7 @@ Every tool input is validated with Zod schemas. Invalid or unexpected parameters
 
 - JWT tokens cached in memory, never logged or exposed
 - The config resource (`config://server/settings`) explicitly excludes sensitive fields
+- **Scope — outbound, not inbound:** this layer secures the *upstream* API credential the bridge holds (the JWT it presents to the REST API). It does **not** authenticate *inbound* MCP traffic: the HTTP transport is not itself authenticated and assumes a trusted network / proxy-terminated auth (stdio, the default transport, is trusted by process boundary). See [TRANSPORT.md](TRANSPORT.md#http-transport) for where to add a bearer-token check if you expose HTTP beyond a trusted network.
 
 ## Layer 6: Error Handling
 
