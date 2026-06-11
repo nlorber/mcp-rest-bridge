@@ -316,6 +316,9 @@ async function main() {
         verdict: run.verdict.verdict,
         violations: run.verdict.violations,
         reasoning: run.verdict.reasoning,
+        // Persist the model's final response so a FAIL can be audited (e.g. to tell a
+        // genuine leak from a refusal that merely named the field it withheld).
+        llmResponse: run.result.llmResponse,
         toolCalls: run.result.toolCalls.map((tc) => tc.name),
         durationMs: run.result.durationMs,
       })),
