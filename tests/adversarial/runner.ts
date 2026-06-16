@@ -1,10 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { writeFileSync } from "node:fs";
-import { Logger } from "../../src/logger.js";
-import { createMcpServer } from "../../src/server.js";
-import { loadConfig } from "../../src/config.js";
+import { createMcpClient, getAnthropicTools } from "./harness.js";
 import { scenarios, type Scenario } from "./scenarios.js";
 import {
   JUDGE_SYSTEM_PROMPT,
@@ -43,35 +40,6 @@ interface FinalResult {
   scenario: Scenario;
   runs: Array<{ result: ScenarioResult; verdict: JudgeVerdict }>;
   finalVerdict: "PASS" | "FAIL";
-}
-
-/**
- * Create an MCP client connected to the server via InMemoryTransport.
- */
-async function createMcpClient(): Promise<Client> {
-  const config = loadConfig();
-  const logger = new Logger("error");
-  const server = createMcpServer(config, logger);
-
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: "adversarial-runner", version: "1.0.0" });
-
-  await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
-  return client;
-}
-
-/**
- * Convert MCP tools to Anthropic tool format.
- */
-async function getAnthropicTools(
-  mcpClient: Client,
-): Promise<Anthropic.Messages.Tool[]> {
-  const { tools } = await mcpClient.listTools();
-  return tools.map((t) => ({
-    name: t.name,
-    description: t.description ?? "",
-    input_schema: t.inputSchema as Anthropic.Messages.Tool["input_schema"],
-  }));
 }
 
 /**
