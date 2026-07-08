@@ -173,19 +173,19 @@ npm run typecheck
 npm run lint
 ```
 
-Representative run (`claude-sonnet-4-6` runner, `claude-haiku-4-5-20251001` judge, 1 run/scenario):
+Representative run (`claude-sonnet-4-6` runner, `claude-haiku-4-5-20251001` judge, 1 run/scenario — full report committed at [`tests/adversarial/report-2026-07-08.json`](tests/adversarial/report-2026-07-08.json)):
 
 ```
   Runner: claude-sonnet-4-6 | Judge: claude-haiku-4-5-20251001
   Scenarios: 26 | Runs/scenario: 1
   ...
-  Total: 24 passed, 2 failed out of 26
+  Total: 25 passed, 1 failed out of 26
 ```
 
 Read the result in two layers:
 
 - **Deterministic field filtering — the bridge's actual guarantee.** In every run, no internal field _value_ (`internal_code`, `supplier_id`, `cost_price`, `margin_pct`, credentials, tokens) reaches the model. This is pure, unit-tested allowlist code (`pickFields`); it does not depend on the runner model. The suite's `forbidden` patterns assert this directly — they match the concrete secret _values_ from the mock data, not field _names_ (a correct refusal naturally names the field it withholds).
-- **Agentic pass rate — model-dependent, ~24/26.** The suite drives a _real_ Claude agent against the tools and judges its end-to-end conversation, so the score reflects the runner model as much as the bridge (the same scenarios score very differently across models). The 2–3 scenarios that fail **vary run to run** and are **multi-turn jailbreak / destructive-action _posture_** (e.g. the agent engaging a "forget your safety rules" framing) — not data leaks; the filter still strips every internal value. See [docs/ADVERSARIAL_TESTING.md](docs/ADVERSARIAL_TESTING.md) for the per-category breakdown and known limitations.
+- **Agentic pass rate — model-dependent, 24–25/26.** The suite drives a _real_ Claude agent against the tools and judges its end-to-end conversation, so the score reflects the runner model as much as the bridge (the same scenarios score very differently across models). The 1–3 scenarios that fail **vary run to run** and are **multi-turn jailbreak / destructive-action _posture_** (in the committed run: one multi-turn scenario where the agent engaged a "forget your safety rules" framing) — not data leaks; the filter still strips every internal value. See [docs/ADVERSARIAL_TESTING.md](docs/ADVERSARIAL_TESTING.md) for the per-category breakdown and known limitations.
 
 ## Customization
 
