@@ -9,5 +9,5 @@ scripts/demo.tape
 .claude/
 docs/superpowers/
 
-# Local dev config for Claude Code
+# Local dev config
 AGENTS.md
