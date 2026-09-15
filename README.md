@@ -146,7 +146,7 @@ src/
 
 See [docs/SECURITY.md](docs/SECURITY.md) for the full security model. Key features:
 
-1. **Field filtering** — allowlist-based, strips internal fields (`internal_code`, `supplier_id`, `cost_price`, `margin_pct`) including nested objects/arrays, with prototype-pollution hardening
+1. **Field filtering** — allowlist-based, strips internal fields (`internal_code`, `supplier_id`, `cost_price`, `margin_pct`); nested objects reach the LLM only through explicit dot-paths, with prototype-pollution hardening
 2. **Response instructions** — embedded guidance in every tool response (overridable per tool)
 3. **Server instructions** — LLM guidance in MCP capabilities
 4. **Input validation** — Zod schemas on every tool argument

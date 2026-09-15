@@ -8,6 +8,8 @@ Fields are selected by an explicit allowlist, not removed by a denylist. When th
 
 Trade-off: adding a legitimate new field requires updating two places (the API response type and the filter definition). This friction is intentional.
 
+The same fail-closed rule applies inside values. A plain allowlisted key whose value is an object, or an array holding one, is dropped: passing it through would expose every nested field, present and future. Nested data must be selected with explicit dot-paths (`price.amount`). The ceiling is that arrays of objects cannot be exposed at all until the filter supports element paths.
+
 See: `src/api/filters/definitions.ts`
 
 ## Global Tool Registry

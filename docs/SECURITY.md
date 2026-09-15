@@ -20,10 +20,13 @@ The mock API includes "trap" fields that exist in raw responses but must never r
 - `sort_order` — internal ordering metadata
 
 **Nested fields & prototype hardening:**
-Allowlists support dot-notation paths of arbitrary depth (e.g. `details.weight`), so trap
-fields hidden inside nested objects or arrays are stripped too — not just top-level keys. The
-filter copies only own-enumerable properties and ignores `__proto__` / prototype-chain keys, so
-a crafted payload cannot smuggle fields through prototype pollution.
+Allowlists support dot-notation paths of arbitrary depth (e.g. `details.weight`). A plain
+allowlisted key passes only primitives and arrays of primitives: when its value is an object, or
+an array holding one, the key is dropped, so a trap field nested under an allowlisted key
+(`price: { amount, cost_price }`) cannot ride along. Nested data reaches the LLM only through
+explicit dot-paths, and dot-paths never traverse arrays, so arrays of objects are never exposed.
+The filter copies only own properties and ignores `__proto__` / prototype-chain keys, so a
+crafted payload cannot smuggle fields through prototype pollution.
 
 ## Layer 2: Response Instructions
 

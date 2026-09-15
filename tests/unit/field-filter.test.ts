@@ -127,6 +127,30 @@ describe("pickFields", () => {
     expect(result).toEqual({ id: 1 });
   });
 
+  // --- Object values under plain (dot-less) keys ---
+
+  it("drops an object value under a plain allowlisted key, so nested trap fields cannot ride along", () => {
+    const obj = { id: 1, price: { amount: 79.99, cost_price: 32.5 } };
+    const result = pickFields(obj, ["id", "price"]);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("drops arrays holding objects under a plain key but keeps arrays of primitives", () => {
+    const obj = {
+      tags: ["office", ["nested", "tags"]],
+      variants: [{ sku: "KB-BLK", cost_price: 30 }],
+      deep: [[{ cost_price: 1 }]],
+    };
+    const result = pickFields(obj, ["tags", "variants", "deep"]);
+    expect(result).toEqual({ tags: ["office", ["nested", "tags"]] });
+  });
+
+  it("still exposes nested values selected by explicit dot-paths", () => {
+    const obj = { id: 1, price: { amount: 79.99, cost_price: 32.5 } };
+    const result = pickFields(obj, ["id", "price.amount"]);
+    expect(result).toEqual({ id: 1, price: { amount: 79.99 } });
+  });
+
   it("does not descend or assign through __proto__ paths", () => {
     const obj = { id: 1 };
     const result = pickFields(obj, ["id", "__proto__.polluted"]);

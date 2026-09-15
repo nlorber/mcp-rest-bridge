@@ -13,6 +13,9 @@
  * - Non-object inputs (primitives, null) return an empty object.
  * - Arrays are handled element-by-element, recursing into each object element;
  *   non-object elements are dropped.
+ * - A plain (dot-less) field is copied only when its value holds no object: an
+ *   object, or an array containing one, is dropped. Nested data must be selected
+ *   with explicit dot-paths, so unlisted nested fields never ride along.
  * - A dot-path whose intermediate value is an array or primitive is skipped, not
  *   descended into — arrays are never traversed via dot-notation.
  * - A nested key is emitted only when something downstream actually matched; a
@@ -47,7 +50,7 @@ export function pickFields(
   for (const field of fields) {
     const dotIndex = field.indexOf(".");
     if (dotIndex === -1) {
-      if (Object.hasOwn(record, field)) {
+      if (Object.hasOwn(record, field) && !holdsObject(record[field])) {
         assignField(result, field, record[field]);
       }
     } else {
@@ -80,6 +83,15 @@ export function pickFields(
 }
 
 /**
+ * True for an object, or an array holding one at any depth. Copying such a value
+ * under a plain key would carry every nested field past the allowlist.
+ */
+function holdsObject(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(holdsObject);
+  return value !== null && typeof value === "object";
+}
+
+/**
  * Assign a key to the result without risking prototype pollution. `Object.defineProperty`
  * with an own data descriptor never walks the prototype chain, so a key named
  * "__proto__" lands as a plain own property rather than mutating the prototype.
@@ -92,4 +104,3 @@ function assignField(target: Record<string, unknown>, key: string, value: unknow
     configurable: true,
   });
 }
-
