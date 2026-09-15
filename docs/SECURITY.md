@@ -18,9 +18,12 @@ The mock API includes "trap" fields that exist in raw responses but must never r
 - `cost_price` — wholesale cost (margin-sensitive)
 - `margin_pct` — profit margin percentage
 - `sort_order` — internal ordering metadata
+- `owner_id` — the account an item belongs to
+- `dimensions.warehouse_bin` — a trap field nested under an allowlisted key
+- `supplier` and `variants` — a nested object and an array of objects, neither allowlisted, both carrying supplier and cost data
 
 **Nested fields & prototype hardening:**
-Allowlists support dot-notation paths of arbitrary depth (e.g. `details.weight`). A plain
+Allowlists support dot-notation paths of arbitrary depth (e.g. `dimensions.weight_kg`). A plain
 allowlisted key passes only primitives and arrays of primitives: when its value is an object, or
 an array holding one, the key is dropped, so a trap field nested under an allowlisted key
 (`price: { amount, cost_price }`) cannot ride along. Nested data reaches the LLM only through
@@ -57,6 +60,8 @@ This guides the client LLM's overall behavior.
 ## Layer 4: Input Validation
 
 Every tool input is validated with Zod schemas. Invalid or unexpected parameters are rejected before any API call is made.
+
+Arguments outside a tool's schema are stripped rather than forwarded, so the model cannot smuggle in a selector the tool does not define — an `owner_id`, a tenant ID, or a raw upstream filter. **Tenant isolation itself belongs to the upstream API**: it scopes data to the credential the bridge holds, and the bridge holds exactly one. The mock API models this by scoping every item route to the authenticated account, with no admin bypass, so another account's item is indistinguishable from a missing one. A deployment that needs per-user isolation must give each user their own upstream credential and session, which this template does not do (see [TRANSPORT.md](TRANSPORT.md#http-transport) on inbound authentication).
 
 ## Layer 5: Credential Security
 

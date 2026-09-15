@@ -1,14 +1,28 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { items, getNextItemId, type Item } from "../data.js";
-import { requireAuth } from "../auth.js";
+import { requireAuth, type TokenPayload } from "../auth.js";
 
 const router = Router();
 
 // All item routes require authentication
 router.use(requireAuth);
 
+/** ID of the authenticated caller, set by requireAuth. */
+function callerId(req: Request): number | undefined {
+  return (req as Request & { user?: TokenPayload }).user?.sub;
+}
+
 /**
- * GET /items — List items with pagination and search.
+ * Items the caller may see. Every route goes through this, so another account's item is
+ * indistinguishable from a missing one (404), whatever the caller's role.
+ */
+function ownItems(req: Request): Item[] {
+  const userId = callerId(req);
+  return items.filter((item) => item.owner_id === userId);
+}
+
+/**
+ * GET /items — List the caller's items with pagination and search.
  * Query params: page, per_page, search, category_id, status
  */
 router.get("/", (req, res) => {
@@ -18,7 +32,7 @@ router.get("/", (req, res) => {
   const categoryId = req.query.category_id ? parseInt(req.query.category_id as string) : undefined;
   const status = req.query.status as string | undefined;
 
-  let filtered = [...items];
+  let filtered = ownItems(req);
 
   if (search) {
     filtered = filtered.filter(
@@ -49,11 +63,11 @@ router.get("/", (req, res) => {
 });
 
 /**
- * GET /items/:id — Get a single item by ID.
+ * GET /items/:id — Get one of the caller's items by ID.
  */
 router.get("/:id", (req, res) => {
   const id = parseInt(req.params.id);
-  const item = items.find((i) => i.id === id);
+  const item = ownItems(req).find((i) => i.id === id);
 
   if (!item) {
     res.status(404).json({ error: `Item with id ${id} not found` });
@@ -64,12 +78,13 @@ router.get("/:id", (req, res) => {
 });
 
 /**
- * POST /items — Create a new item.
+ * POST /items — Create a new item owned by the caller.
  */
 router.post("/", (req, res) => {
   const body = req.body as Partial<Item>;
+  const ownerId = callerId(req);
 
-  if (!body.name || body.category_id === undefined || body.price === undefined) {
+  if (!body.name || body.category_id === undefined || body.price === undefined || ownerId === undefined) {
     res.status(400).json({ error: "name, category_id, and price are required" });
     return;
   }
@@ -85,6 +100,7 @@ router.post("/", (req, res) => {
     status: body.status ?? "active",
     created_at: now,
     updated_at: now,
+    owner_id: ownerId,
     // Mock internal fields — these simulate server-side data
     internal_code: `SKU-NEW-${Date.now().toString(36).toUpperCase()}`,
     supplier_id: 9999,
@@ -97,11 +113,11 @@ router.post("/", (req, res) => {
 });
 
 /**
- * PATCH /items/:id — Update an item.
+ * PATCH /items/:id — Update one of the caller's items.
  */
 router.patch("/:id", (req, res) => {
   const id = parseInt(req.params.id);
-  const item = items.find((i) => i.id === id);
+  const item = ownItems(req).find((i) => i.id === id);
 
   if (!item) {
     res.status(404).json({ error: `Item with id ${id} not found` });
@@ -123,11 +139,12 @@ router.patch("/:id", (req, res) => {
 });
 
 /**
- * DELETE /items/:id — Delete an item.
+ * DELETE /items/:id — Delete one of the caller's items.
  */
 router.delete("/:id", (req, res) => {
   const id = parseInt(req.params.id);
-  const index = items.findIndex((i) => i.id === id);
+  const userId = callerId(req);
+  const index = items.findIndex((i) => i.id === id && i.owner_id === userId);
 
   if (index === -1) {
     res.status(404).json({ error: `Item with id ${id} not found` });

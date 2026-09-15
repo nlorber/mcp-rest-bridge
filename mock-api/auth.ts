@@ -5,7 +5,7 @@ import { users } from "./data.js";
 const JWT_SECRET = "mcp-rest-bridge-dev-secret";
 const TOKEN_EXPIRY = 3600; // 1 hour
 
-interface TokenPayload {
+export interface TokenPayload {
   sub: number;
   username: string;
   role: string;

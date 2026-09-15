@@ -174,7 +174,26 @@ describe("item field definitions", () => {
     supplier_id: 4012,
     cost_price: 32.5,
     margin_pct: 59.4,
+    owner_id: 1,
+    dimensions: { width_cm: 44, depth_cm: 13, height_cm: 4, weight_kg: 0.9, warehouse_bin: "WH-A03-14" },
+    supplier: { name: "Keystone Peripherals", supplier_id: 4012, unit_cost: 32.5 },
+    variants: [{ sku: "SKU-KB-7842-BLK", color: "Black", cost_price: 32.5 }],
   };
+
+  it("item:detail exposes measurements but no nested trap data", () => {
+    const result = createFilter("item:detail")(itemWithTraps);
+    expect(result.dimensions).toEqual({ width_cm: 44, depth_cm: 13, height_cm: 4, weight_kg: 0.9 });
+    expect(result).not.toHaveProperty("owner_id");
+    expect(result).not.toHaveProperty("supplier");
+    expect(result).not.toHaveProperty("variants");
+  });
+
+  it("item:list omits nested data entirely", () => {
+    const result = createFilter("item:list")(itemWithTraps);
+    expect(result).not.toHaveProperty("dimensions");
+    expect(result).not.toHaveProperty("supplier");
+    expect(result).not.toHaveProperty("variants");
+  });
 
   it("item:list should strip trap fields", () => {
     const filter = createFilter("item:list");

@@ -15,9 +15,14 @@ const ITEM_DETAIL_FIELDS = [
   "description",
   "created_at",
   "updated_at",
+  "dimensions.width_cm",
+  "dimensions.depth_cm",
+  "dimensions.height_cm",
+  "dimensions.weight_kg",
 ];
 
-// Trap fields NOT included: internal_code, supplier_id, cost_price, margin_pct
+// Trap fields NOT included: internal_code, supplier_id, cost_price, margin_pct, owner_id,
+// dimensions.warehouse_bin, and the nested supplier object and variants array
 
 // --- Categories ---
 

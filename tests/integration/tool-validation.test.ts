@@ -80,3 +80,29 @@ describe("Tool Execution Errors", () => {
     expect(text).not.toContain("db.internal");
   });
 });
+
+describe("Tenant Selectors", () => {
+  let client: Client;
+  let mockHttp: ReturnType<typeof createMockHttpClient>;
+
+  beforeAll(async () => {
+    const ctx = await createTestClient();
+    client = ctx.client;
+    mockHttp = ctx.mockHttpClient;
+  });
+
+  it("never forwards arguments outside the tool schema, such as an owner or tenant selector", async () => {
+    mockHttp.get.mockResolvedValueOnce({ items: [], total_count: 0, page: 1, per_page: 10 });
+
+    await client.callTool({
+      name: "list_items",
+      arguments: { search: "desk", owner_id: 2, tenant: "42" },
+    });
+
+    const [path, options] = mockHttp.get.mock.calls[0] as [string, { params: Record<string, unknown> }];
+    expect(path).toBe("/items");
+    expect(options.params.search).toBe("desk");
+    expect(options.params).not.toHaveProperty("owner_id");
+    expect(options.params).not.toHaveProperty("tenant");
+  });
+});
