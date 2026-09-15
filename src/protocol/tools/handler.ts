@@ -1,12 +1,12 @@
 import type { CallToolRequest, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ZodError } from "zod";
-import { getToolHandler } from "./registry.js";
+import type { ToolRegistry } from "./registry.js";
 import { invalidParams, ToolError } from "../../utils/mcp-error.js";
 import { withTimeout, getToolTimeout, TimeoutError } from "../../utils/timeout.js";
 import type { Logger } from "../../logger.js";
 
 /**
- * Create the CallTool dispatcher.
+ * Create the CallTool dispatcher for one server's tool registry.
  * Routes requests to the correct handler, applies timeout, and normalizes errors:
  * - A malformed call (unknown tool, arguments that fail the tool's schema) is a
  *   protocol error (InvalidParams).
@@ -16,12 +16,16 @@ import type { Logger } from "../../logger.js";
  * Threads an AbortSignal into each handler so that timed-out operations can
  * cancel in-flight I/O rather than just being abandoned.
  */
-export function createCallToolHandler(defaultTimeoutMs: number, logger: Logger) {
+export function createCallToolHandler(
+  registry: ToolRegistry,
+  defaultTimeoutMs: number,
+  logger: Logger,
+) {
   return async (request: CallToolRequest): Promise<CallToolResult> => {
     const { name, arguments: args = {} } = request.params;
     const timeout = getToolTimeout(name, defaultTimeoutMs);
 
-    const handler = getToolHandler(name);
+    const handler = registry.getHandler(name);
     if (!handler) {
       throw invalidParams(`Unknown tool: ${name}`);
     }

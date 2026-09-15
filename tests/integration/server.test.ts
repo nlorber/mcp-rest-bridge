@@ -5,21 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { Logger } from "../../src/logger.js";
 import { clearSchemes } from "../../src/protocol/resources/uri-router.js";
-import { clearTools } from "../../src/protocol/tools/registry.js";
 import { createMcpServer } from "../../src/server.js";
 import { startStdioTransport } from "../../src/transport/stdio.js";
 
-// createMcpServer registers tools and URI schemes in module-level registries;
-// reset them around each test so repeated construction stays isolated.
+// createMcpServer registers URI schemes in a module-level registry (tools get their own
+// per server); reset the schemes around each test so repeated construction stays isolated.
 beforeEach(() => {
-  clearTools();
   clearSchemes();
   // loadConfig requires upstream credentials; these tests never call the API
   vi.stubEnv("API_USERNAME", "test-user");
   vi.stubEnv("API_PASSWORD", "test-pass");
 });
 afterEach(() => {
-  clearTools();
   clearSchemes();
   vi.unstubAllEnvs();
 });
@@ -40,6 +37,23 @@ describe("createMcpServer", () => {
 
     const { resources } = await client.listResources();
     expect(Array.isArray(resources)).toBe(true);
+
+    await client.close();
+  });
+
+  it("gives each server its own tools, so one server's registry cannot serve another", async () => {
+    const config = loadConfig();
+    const first = createMcpServer(config, new Logger("error"));
+    const second = createMcpServer(config, new Logger("error"));
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "1.0.0" });
+    await Promise.all([client.connect(clientTransport), first.connect(serverTransport)]);
+
+    // The second server exists and registered its own tools; the first still serves its own
+    const { tools } = await client.listTools();
+    expect(tools).toHaveLength(7);
+    expect(second).not.toBe(first);
 
     await client.close();
   });

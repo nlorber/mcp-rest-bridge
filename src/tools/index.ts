@@ -1,4 +1,4 @@
-import { registerTool } from "../protocol/tools/registry.js";
+import type { ToolRegistry } from "../protocol/tools/registry.js";
 import type { HttpClient } from "../api/client.js";
 import { listItemsTool } from "./items/list.js";
 import { getItemTool } from "./items/get.js";
@@ -9,17 +9,17 @@ import { listCategoriesTool } from "./categories/list.js";
 import { getCategoryTool } from "./categories/get.js";
 
 /**
- * Register all tool definitions in the global registry.
+ * Register all tool definitions in one server's registry.
  */
-export function registerAllTools(httpClient: HttpClient): void {
+export function registerAllTools(registry: ToolRegistry, httpClient: HttpClient): void {
   // Items CRUD
-  registerTool(listItemsTool(httpClient));
-  registerTool(getItemTool(httpClient));
-  registerTool(createItemTool(httpClient));
-  registerTool(updateItemTool(httpClient));
-  registerTool(deleteItemTool(httpClient));
+  registry.register(listItemsTool(httpClient));
+  registry.register(getItemTool(httpClient));
+  registry.register(createItemTool(httpClient));
+  registry.register(updateItemTool(httpClient));
+  registry.register(deleteItemTool(httpClient));
 
   // Categories
-  registerTool(listCategoriesTool(httpClient));
-  registerTool(getCategoryTool(httpClient));
+  registry.register(listCategoriesTool(httpClient));
+  registry.register(getCategoryTool(httpClient));
 }

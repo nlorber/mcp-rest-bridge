@@ -12,11 +12,11 @@ The same fail-closed rule applies inside values. A plain allowlisted key whose v
 
 See: `src/api/filters/definitions.ts`
 
-## Global Tool Registry
+## Per-Server Tool Registry
 
-Tools are registered in a module-level `Map` (`src/protocol/tools/registry.ts`) rather than passed as constructor arguments or injected via DI. This keeps tool registration decoupled from server creation — any module can call `registerTool()` without threading a registry instance through the call chain.
+Each `createMcpServer()` call builds its own `ToolRegistry` (`src/protocol/tools/registry.ts`) and threads it through `registerAllTools()` and `createCallToolHandler()`, rather than tools living in a module-level map.
 
-The trade-off is global mutable state, but for an MCP server (single process, single server instance, tools registered once at startup) this is pragmatic. `clearTools()` handles test isolation.
+The HTTP transport creates one `Server` per session, and each session's tools close over that session's HTTP client. With a shared map, the newest session's handlers would serve every open session — harmless while all sessions share one upstream credential, and wrong the moment they do not. Threading the registry costs one parameter on two functions, and in exchange a server's tool surface is owned by that server and goes away with it; tests build a registry per case instead of resetting global state.
 
 ## File-Based Prompt Templates
 

@@ -11,7 +11,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { vi } from "vitest";
 import { Logger } from "../../../src/logger.js";
-import { getTools, clearTools } from "../../../src/protocol/tools/registry.js";
+import { ToolRegistry } from "../../../src/protocol/tools/registry.js";
 import { createCallToolHandler } from "../../../src/protocol/tools/handler.js";
 import { handleListPrompts, handleGetPrompt } from "../../../src/protocol/prompts/handler.js";
 import {
@@ -63,12 +63,12 @@ export function createMockHttpClient() {
  * Returns the client and the mock HttpClient for setting up expectations.
  */
 export async function createTestClient() {
-  // Reset global state
-  clearTools();
+  // URI schemes still live in a module-level registry; tools get a fresh one per client
   clearSchemes();
 
   const mockHttpClient = createMockHttpClient();
-  registerAllTools(mockHttpClient as unknown as HttpClient);
+  const registry = new ToolRegistry();
+  registerAllTools(registry, mockHttpClient as unknown as HttpClient);
 
   const server = new Server(
     { name: "test-server", version: "0.0.1" },
@@ -81,10 +81,10 @@ export async function createTestClient() {
 
   // Register handlers
   server.setRequestHandler(ListToolsRequestSchema, () =>
-    Promise.resolve({ tools: getTools() }),
+    Promise.resolve({ tools: registry.list() }),
   );
 
-  const callToolHandler = createCallToolHandler(60000, logger);
+  const callToolHandler = createCallToolHandler(registry, 60000, logger);
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       return await callToolHandler(request);

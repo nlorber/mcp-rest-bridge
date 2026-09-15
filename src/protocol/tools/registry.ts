@@ -10,34 +10,32 @@ export interface ToolDefinition {
   handler: (args: Record<string, unknown>, signal: AbortSignal) => Promise<CallToolResult>;
 }
 
-const tools = new Map<string, ToolDefinition>();
-
 /**
- * Register a tool in the global registry.
+ * The tools one server instance serves. Each MCP server owns a registry, because the
+ * HTTP transport creates a Server per session: a shared registry would let the newest
+ * session's handlers — bound to that session's HTTP client — serve every open session.
  */
-export function registerTool(definition: ToolDefinition): void {
-  tools.set(definition.tool.name, definition);
-}
+export class ToolRegistry {
+  private readonly tools = new Map<string, ToolDefinition>();
 
-/**
- * Get all registered tool metadata (for ListToolsRequest).
- */
-export function getTools(): Tool[] {
-  return Array.from(tools.values()).map((d) => d.tool);
-}
+  /**
+   * Register a tool. A later registration under the same name replaces the earlier one.
+   */
+  register(definition: ToolDefinition): void {
+    this.tools.set(definition.tool.name, definition);
+  }
 
-/**
- * Look up a tool handler by name (for CallToolRequest).
- */
-export function getToolHandler(
-  name: string,
-): ((args: Record<string, unknown>, signal: AbortSignal) => Promise<CallToolResult>) | undefined {
-  return tools.get(name)?.handler;
-}
+  /**
+   * All registered tool metadata (for ListToolsRequest).
+   */
+  list(): Tool[] {
+    return Array.from(this.tools.values()).map((d) => d.tool);
+  }
 
-/**
- * Clear all registered tools (useful for testing).
- */
-export function clearTools(): void {
-  tools.clear();
+  /**
+   * Look up a tool handler by name (for CallToolRequest).
+   */
+  getHandler(name: string): ToolDefinition["handler"] | undefined {
+    return this.tools.get(name)?.handler;
+  }
 }

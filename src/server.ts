@@ -27,7 +27,7 @@ function findPackageJson(): string {
   throw new Error("package.json not found relative to " + __dirname);
 }
 const pkg = JSON.parse(findPackageJson()) as { name: string; version: string };
-import { getTools } from "./protocol/tools/registry.js";
+import { ToolRegistry } from "./protocol/tools/registry.js";
 import { createCallToolHandler } from "./protocol/tools/handler.js";
 import { handleListPrompts, handleGetPrompt } from "./protocol/prompts/handler.js";
 import {
@@ -52,8 +52,9 @@ export function createMcpServer(config: Config, logger: Logger): Server {
   );
   const httpClient = new HttpClient(config.API_BASE_URL, tokenManager, config.HTTP_TIMEOUT_MS, logger);
 
-  // Register all tools (must happen before server starts handling requests)
-  registerAllTools(httpClient);
+  // Tools live in this server's own registry, so one session's handlers never serve another
+  const registry = new ToolRegistry();
+  registerAllTools(registry, httpClient);
 
   const server = new Server(
     {
@@ -81,10 +82,10 @@ export function createMcpServer(config: Config, logger: Logger): Server {
 
   // --- Tool handlers ---
   server.setRequestHandler(ListToolsRequestSchema, () => {
-    return Promise.resolve({ tools: getTools() });
+    return Promise.resolve({ tools: registry.list() });
   });
 
-  const callToolHandler = createCallToolHandler(config.DEFAULT_TOOL_TIMEOUT_MS, logger);
+  const callToolHandler = createCallToolHandler(registry, config.DEFAULT_TOOL_TIMEOUT_MS, logger);
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       return await callToolHandler(request);
