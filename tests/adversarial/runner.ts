@@ -6,8 +6,10 @@ import { scenarios, type Scenario } from "./scenarios.js";
 import {
   JUDGE_SYSTEM_PROMPT,
   buildJudgeMessage,
+  outputText,
   parseJudgeResponse,
   type JudgeVerdict,
+  type TranscriptEntry,
 } from "./judge.js";
 
 const RUNNER_MODEL = (() => {
@@ -30,7 +32,8 @@ interface ToolCallRecord {
 
 interface ScenarioResult {
   scenario: Scenario;
-  llmResponse: string;
+  /** Every user turn, assistant message, tool call and tool result, in order. */
+  transcript: TranscriptEntry[];
   toolCalls: ToolCallRecord[];
   durationMs: number;
   error?: string;
@@ -53,12 +56,13 @@ async function runScenario(
 ): Promise<ScenarioResult> {
   const start = Date.now();
   const toolCalls: ToolCallRecord[] = [];
-  let finalText = "";
+  const transcript: TranscriptEntry[] = [];
   const messages: Anthropic.Messages.MessageParam[] = [];
 
   try {
     for (const turn of scenario.turns) {
       messages.push({ role: "user", content: turn });
+      transcript.push({ role: "user", text: turn });
       let toolCallCount = 0;
 
       // Agentic loop: Claude calls tools until it produces a text response
@@ -77,11 +81,13 @@ async function runScenario(
           ),
         ]);
 
-        // Collect text blocks
-        const textBlocks = response.content.filter(
-          (b): b is Anthropic.Messages.TextBlock => b.type === "text",
-        );
-        finalText = textBlocks.map((b) => b.text).join("\n");
+        // Record every assistant message, not just the last one: a leak in an early
+        // turn must stay visible to the judge even if a later turn refuses.
+        const text = response.content
+          .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("\n");
+        if (text) transcript.push({ role: "assistant", text });
 
         // If no tool use, done with this turn
         if (response.stop_reason !== "tool_use") {
@@ -101,43 +107,37 @@ async function runScenario(
           toolCallCount++;
           const args = toolUse.input as Record<string, unknown>;
           toolCalls.push({ name: toolUse.name, args });
+          transcript.push({ role: "tool_call", text: `${toolUse.name}(${JSON.stringify(args)})` });
 
+          let content: string;
+          let isError: boolean;
           if (toolCallCount > MAX_TOOL_CALLS) {
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: "Error: maximum tool calls reached.",
-              is_error: true,
-            });
-            continue;
+            content = "Error: maximum tool calls reached.";
+            isError = true;
+          } else {
+            try {
+              const mcpResult = await mcpClient.callTool({
+                name: toolUse.name,
+                arguments: args,
+              });
+              content = (mcpResult.content as { type: string; text: string }[])
+                .filter((c) => c.type === "text")
+                .map((c) => c.text)
+                .join("\n");
+              isError = mcpResult.isError === true;
+            } catch (err) {
+              content = `Tool error: ${err instanceof Error ? err.message : String(err)}`;
+              isError = true;
+            }
           }
 
-          try {
-            const mcpResult = await mcpClient.callTool({
-              name: toolUse.name,
-              arguments: args,
-            });
-            const resultText = (
-              mcpResult.content as { type: string; text: string }[]
-            )
-              .filter((c) => c.type === "text")
-              .map((c) => c.text)
-              .join("\n");
-
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: resultText,
-              is_error: mcpResult.isError === true,
-            });
-          } catch (err) {
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: `Tool error: ${err instanceof Error ? err.message : String(err)}`,
-              is_error: true,
-            });
-          }
+          transcript.push({ role: "tool_result", text: content });
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content,
+            is_error: isError,
+          });
         }
 
         messages.push({ role: "user", content: toolResults });
@@ -145,11 +145,11 @@ async function runScenario(
       }
     }
 
-    return { scenario, llmResponse: finalText, toolCalls, durationMs: Date.now() - start };
+    return { scenario, transcript, toolCalls, durationMs: Date.now() - start };
   } catch (err) {
     return {
       scenario,
-      llmResponse: finalText,
+      transcript,
       toolCalls,
       durationMs: Date.now() - start,
       error: err instanceof Error ? err.message : String(err),
@@ -164,10 +164,11 @@ async function judge(
   anthropic: Anthropic,
   result: ScenarioResult,
 ): Promise<JudgeVerdict> {
-  // Programmatic forbidden pattern checks
+  // Programmatic forbidden-value checks over everything the model and the server produced
+  const output = outputText(result.transcript);
   const patternViolations: string[] = [];
   for (const pattern of result.scenario.forbidden) {
-    if (pattern.test(result.llmResponse)) {
+    if (pattern.test(output)) {
       patternViolations.push(`Forbidden pattern matched: ${pattern.source}`);
     }
   }
@@ -175,12 +176,9 @@ async function judge(
   const userMessage = buildJudgeMessage({
     scenarioId: result.scenario.id,
     section: result.scenario.section,
-    turns: result.scenario.turns,
     expectRefusal: result.scenario.expectRefusal,
-    llmResponse: result.error
-      ? `[RUNNER ERROR: ${result.error}]\n${result.llmResponse}`
-      : result.llmResponse,
-    toolCalls: result.toolCalls,
+    transcript: result.transcript,
+    runnerError: result.error,
   });
 
   const response = await anthropic.messages.create({
@@ -284,9 +282,10 @@ async function main() {
         verdict: run.verdict.verdict,
         violations: run.verdict.violations,
         reasoning: run.verdict.reasoning,
-        // Persist the model's final response so a FAIL can be audited (e.g. to tell a
-        // genuine leak from a refusal that merely named the field it withheld).
-        llmResponse: run.result.llmResponse,
+        // Persist the full transcript so a FAIL can be audited (e.g. to tell a genuine
+        // leak from a refusal that merely named the field it withheld).
+        transcript: run.result.transcript,
+        error: run.result.error,
         toolCalls: run.result.toolCalls.map((tc) => tc.name),
         durationMs: run.result.durationMs,
       })),
