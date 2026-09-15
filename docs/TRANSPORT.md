@@ -43,9 +43,9 @@ MCP_HTTP_PORT=3456  (default)
 3. Sessions are cleaned up when the client terminates them (`DELETE /mcp`), when the transport closes, or on idle eviction
 
 **Session limits & hardening**:
-- **Cap**: the server holds at most `maxSessions` concurrent sessions (default 1000); once reached, new sessions are rejected with HTTP 503.
-- **Idle eviction**: sessions inactive for longer than the idle timeout (default 30 min) are swept and closed automatically.
-- **Trust proxy**: set the `trustProxy` option when running behind a reverse proxy so per-IP rate limiting sees the real client IP. Enable `requireTrustProxy` to fail-closed (refuse to start) if it is unset.
+- **Cap** (`MCP_MAX_SESSIONS`): the server holds at most this many concurrent sessions (default 1000); once reached, new sessions are rejected with HTTP 503.
+- **Idle eviction** (`MCP_SESSION_IDLE_TIMEOUT_MS`): sessions inactive for longer than this (default 30 min) are swept and closed automatically.
+- **Trust proxy** (`MCP_TRUST_PROXY`): set it when running behind a reverse proxy so per-IP rate limiting sees the real client IP. Accepts `true`, `false`, a hop count, or an Express address list such as `loopback`. Set `MCP_REQUIRE_TRUST_PROXY=true` to fail closed (refuse to start) while it is unset.
 
 **Authentication**: The HTTP transport is **not itself authenticated** — anyone who can reach `/mcp` drives the bridge with full tool access (it is protected only by the rate limiter). This is by design: stdio is the primary, process-trusted transport, and the HTTP transport assumes a **trusted network** with authentication and TLS terminated at a reverse proxy (the same proxy that supplies `trustProxy`). Do not expose it directly to untrusted clients. To authenticate it yourself, put it behind a proxy that enforces auth, or add a bearer-token check in the Express app ahead of the `app.all("/mcp", …)` handler in `src/transport/http.ts`, next to the rate limiter. This inbound transport auth is distinct from the *upstream* API credential the bridge manages (see [SECURITY.md](SECURITY.md#layer-5-credential-security) Layer 5).
 

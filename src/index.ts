@@ -15,6 +15,12 @@ async function main(): Promise<void> {
       config.MCP_HTTP_PORT,
       logger,
       { maxTokens: config.RATE_LIMIT_MAX_TOKENS, refillRatePerSec: config.RATE_LIMIT_REFILL_RATE },
+      {
+        trustProxy: config.MCP_TRUST_PROXY,
+        requireTrustProxy: config.MCP_REQUIRE_TRUST_PROXY,
+        maxSessions: config.MCP_MAX_SESSIONS,
+        idleTimeoutMs: config.MCP_SESSION_IDLE_TIMEOUT_MS,
+      },
     );
     registerShutdown(async () => {
       await new Promise<void>((resolve) => {

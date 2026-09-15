@@ -11,6 +11,10 @@ const CONFIG_KEYS = [
   "HTTP_TIMEOUT_MS",
   "DEFAULT_TOOL_TIMEOUT_MS",
   "CACHE_TTL_MS",
+  "MCP_TRUST_PROXY",
+  "MCP_REQUIRE_TRUST_PROXY",
+  "MCP_MAX_SESSIONS",
+  "MCP_SESSION_IDLE_TIMEOUT_MS",
 ];
 
 const saved: Record<string, string | undefined> = {};
@@ -105,5 +109,47 @@ describe("loadConfig", () => {
   it("rejects invalid log level", () => {
     process.env.LOG_LEVEL = "verbose";
     expect(() => loadConfig()).toThrow();
+  });
+
+  describe("HTTP hardening options", () => {
+    it("leaves them unset by default so the transport applies its own defaults", () => {
+      const config = loadConfig();
+      expect(config.MCP_TRUST_PROXY).toBeUndefined();
+      expect(config.MCP_REQUIRE_TRUST_PROXY).toBe(false);
+      expect(config.MCP_MAX_SESSIONS).toBeUndefined();
+      expect(config.MCP_SESSION_IDLE_TIMEOUT_MS).toBeUndefined();
+    });
+
+    it.each([
+      ["true", true],
+      ["false", false],
+      ["2", 2],
+      ["loopback", "loopback"],
+      ["10.0.0.0/8, 192.168.1.1", "10.0.0.0/8, 192.168.1.1"],
+    ])("parses MCP_TRUST_PROXY=%j as %j", (raw, expected) => {
+      process.env.MCP_TRUST_PROXY = raw;
+      expect(loadConfig().MCP_TRUST_PROXY).toBe(expected);
+    });
+
+    it("parses the remaining options", () => {
+      process.env.MCP_REQUIRE_TRUST_PROXY = "true";
+      process.env.MCP_MAX_SESSIONS = "50";
+      process.env.MCP_SESSION_IDLE_TIMEOUT_MS = "60000";
+
+      const config = loadConfig();
+      expect(config.MCP_REQUIRE_TRUST_PROXY).toBe(true);
+      expect(config.MCP_MAX_SESSIONS).toBe(50);
+      expect(config.MCP_SESSION_IDLE_TIMEOUT_MS).toBe(60_000);
+    });
+
+    it("rejects a non-boolean MCP_REQUIRE_TRUST_PROXY", () => {
+      process.env.MCP_REQUIRE_TRUST_PROXY = "yes";
+      expect(() => loadConfig()).toThrow();
+    });
+
+    it("rejects a zero session cap", () => {
+      process.env.MCP_MAX_SESSIONS = "0";
+      expect(() => loadConfig()).toThrow();
+    });
   });
 });
