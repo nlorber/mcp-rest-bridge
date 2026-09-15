@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/** Split a comma-separated env value into trimmed, non-empty entries. */
+function parseList(value: string | undefined): string[] | undefined {
+  return value
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 const configSchema = z.object({
   /** Transport mode: stdio (default) or http */
   MCP_TRANSPORT: z.enum(["stdio", "http"]).default("stdio"),
@@ -56,6 +64,12 @@ const configSchema = z.object({
 
   /** HTTP transport: evict sessions idle longer than this, in ms (transport default when unset) */
   MCP_SESSION_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+
+  /** HTTP transport: comma-separated Host header hostnames accepted on /mcp (loopback when unset) */
+  MCP_ALLOWED_HOSTS: z.string().optional().transform(parseList),
+
+  /** HTTP transport: comma-separated Origins accepted on /mcp from browser clients (none when unset) */
+  MCP_ALLOWED_ORIGINS: z.string().optional().transform(parseList),
 });
 
 export type Config = z.infer<typeof configSchema>;

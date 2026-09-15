@@ -15,6 +15,8 @@ const CONFIG_KEYS = [
   "MCP_REQUIRE_TRUST_PROXY",
   "MCP_MAX_SESSIONS",
   "MCP_SESSION_IDLE_TIMEOUT_MS",
+  "MCP_ALLOWED_HOSTS",
+  "MCP_ALLOWED_ORIGINS",
 ];
 
 const saved: Record<string, string | undefined> = {};
@@ -118,6 +120,8 @@ describe("loadConfig", () => {
       expect(config.MCP_REQUIRE_TRUST_PROXY).toBe(false);
       expect(config.MCP_MAX_SESSIONS).toBeUndefined();
       expect(config.MCP_SESSION_IDLE_TIMEOUT_MS).toBeUndefined();
+      expect(config.MCP_ALLOWED_HOSTS).toBeUndefined();
+      expect(config.MCP_ALLOWED_ORIGINS).toBeUndefined();
     });
 
     it.each([
@@ -140,6 +144,15 @@ describe("loadConfig", () => {
       expect(config.MCP_REQUIRE_TRUST_PROXY).toBe(true);
       expect(config.MCP_MAX_SESSIONS).toBe(50);
       expect(config.MCP_SESSION_IDLE_TIMEOUT_MS).toBe(60_000);
+    });
+
+    it("splits comma-separated host and origin lists", () => {
+      process.env.MCP_ALLOWED_HOSTS = "localhost, mcp-server ,[::1],";
+      process.env.MCP_ALLOWED_ORIGINS = "https://app.example";
+
+      const config = loadConfig();
+      expect(config.MCP_ALLOWED_HOSTS).toEqual(["localhost", "mcp-server", "[::1]"]);
+      expect(config.MCP_ALLOWED_ORIGINS).toEqual(["https://app.example"]);
     });
 
     it("rejects a non-boolean MCP_REQUIRE_TRUST_PROXY", () => {

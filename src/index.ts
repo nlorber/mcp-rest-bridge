@@ -20,6 +20,8 @@ async function main(): Promise<void> {
         requireTrustProxy: config.MCP_REQUIRE_TRUST_PROXY,
         maxSessions: config.MCP_MAX_SESSIONS,
         idleTimeoutMs: config.MCP_SESSION_IDLE_TIMEOUT_MS,
+        allowedHosts: config.MCP_ALLOWED_HOSTS,
+        allowedOrigins: config.MCP_ALLOWED_ORIGINS,
       },
     );
     registerShutdown(async () => {

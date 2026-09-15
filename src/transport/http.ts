@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Server as HttpServer } from "node:http";
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { hostHeaderValidation } from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "../logger.js";
@@ -13,6 +14,9 @@ const DEFAULT_MAX_SESSIONS = 1000;
 
 /** Default idle timeout: evict sessions inactive for more than 30 minutes. */
 const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+/** Default Host header hostnames accepted on /mcp: loopback only. */
+const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 
 /** How often the idle-eviction sweep runs. */
 const SWEEP_INTERVAL_MS = 60_000;
@@ -41,6 +45,16 @@ export interface HttpTransportOptions {
    * configured. Defaults to `false` (warn-only).
    */
   requireTrustProxy?: boolean;
+  /**
+   * Hostnames (without port; IPv6 in brackets) accepted in the Host header on /mcp.
+   * Guards against DNS rebinding. Defaults to loopback only.
+   */
+  allowedHosts?: string[];
+  /**
+   * Origins accepted on /mcp when a request carries an Origin header (browser clients).
+   * Requests without an Origin header are unaffected. Defaults to none.
+   */
+  allowedOrigins?: string[];
 }
 
 /**
@@ -78,6 +92,8 @@ export function startHttpTransport(
 ): Promise<HttpServer> {
   const maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
   const idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+  const allowedHosts = options.allowedHosts ?? DEFAULT_ALLOWED_HOSTS;
+  const allowedOrigins = options.allowedOrigins ?? [];
 
   // Trust proxy check: warn or fail-closed if not configured
   if (options.trustProxy === undefined) {
@@ -97,6 +113,22 @@ export function startHttpTransport(
   }
   app.use(express.json());
   app.use(createRequestLogger(logger));
+
+  // DNS rebinding protection: a rebound browser page reaches /mcp with an attacker
+  // hostname in Host and the attacker's page in Origin, so both are checked.
+  app.use("/mcp", hostHeaderValidation(allowedHosts));
+  app.use("/mcp", (req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin !== undefined && !allowedOrigins.includes(origin)) {
+      res.status(403).json({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: `Invalid Origin: ${origin}` },
+        id: null,
+      });
+      return;
+    }
+    next();
+  });
 
   app.use("/mcp", createRateLimiter(rateLimit));
 
