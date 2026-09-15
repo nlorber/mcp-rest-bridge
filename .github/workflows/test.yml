@@ -44,3 +44,6 @@ jobs:
           maxColorRange: 90
 
       - run: npm run build
+
+      - name: Smoke-test the built server
+        run: npm run smoke:build

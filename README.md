@@ -160,7 +160,7 @@ See [docs/SECURITY.md](docs/SECURITY.md) for the full security model. Key featur
 # Unit + integration tests
 npm test
 
-# All checks (typecheck + lint + test + build)
+# All checks (typecheck + lint + test + build + smoke test of the built server)
 npm run check
 
 # Adversarial tests (requires ANTHROPIC_API_KEY and RUNNER_MODEL)

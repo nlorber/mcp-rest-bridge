@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, dirname, resolve, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,8 +7,17 @@ import { invalidRequest } from "../../utils/mcp-error.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Walk up to find prompts/: works both in dev (src/) and build (build/src/)
+function findPromptsDir(): string {
+  for (const rel of ["../../../prompts", "../../../../prompts"]) {
+    const candidate = resolve(__dirname, rel);
+    if (existsSync(join(candidate, "metadata.json"))) return candidate;
+  }
+  throw new Error("prompts/metadata.json not found relative to " + __dirname);
+}
+
 /** Root directory for prompt templates. */
-const PROMPTS_DIR = resolve(__dirname, "../../../prompts");
+const PROMPTS_DIR = findPromptsDir();
 
 export interface PromptArgument {
   name: string;

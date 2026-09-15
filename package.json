@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "smoke:build": "node scripts/smoke-build.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run smoke:build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
