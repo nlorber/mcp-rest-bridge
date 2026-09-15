@@ -4,6 +4,13 @@ import type { Logger } from "../logger.js";
 const MAX_RETRIES = 3;
 const BACKOFF_BASE_MS = 100;
 
+/**
+ * Methods retried on network errors and 5xx responses. POST and PATCH are not idempotent,
+ * so a replay can duplicate a write; a replayed DELETE whose first attempt went through
+ * returns 404 and reports a completed delete as a failure. Only GET is safe to repeat.
+ */
+const RETRYABLE_METHODS = new Set(["GET"]);
+
 interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
@@ -51,6 +58,8 @@ export class HttpClient {
   }
 
   private async send(method: string, path: string, options?: RequestOptions): Promise<Response> {
+    const retryable = RETRYABLE_METHODS.has(method);
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const token = await this.tokenManager.getToken();
       const url = this.buildUrl(path, options?.params);
@@ -77,7 +86,12 @@ export class HttpClient {
           signal,
         });
       } catch (error) {
-        if (attempt < MAX_RETRIES && !(error instanceof DOMException && error.name === "TimeoutError")) {
+        // A cancelled request stays cancelled: neither a caller abort nor the
+        // per-request timeout is retried.
+        const cancelled =
+          options?.signal?.aborted === true ||
+          (error instanceof DOMException && error.name === "TimeoutError");
+        if (retryable && !cancelled && attempt < MAX_RETRIES) {
           this.logger.warn("HTTP request failed, retrying", { method, path, attempt, error: String(error) });
           await this.backoff(attempt);
           continue;
@@ -85,7 +99,7 @@ export class HttpClient {
         throw error;
       }
 
-      if (response.status >= 500 && attempt < MAX_RETRIES) {
+      if (response.status >= 500 && retryable && attempt < MAX_RETRIES) {
         this.logger.warn("HTTP 5xx, retrying", { method, path, status: response.status, attempt });
         await this.backoff(attempt);
         continue;
