@@ -38,13 +38,17 @@ git clone https://github.com/nlorber/mcp-rest-bridge.git
 cd mcp-rest-bridge
 npm install
 
-# 2. Start the mock API
+# 2. Create .env (the example holds the mock API's demo credentials)
+cp .env.example .env
+
+# 3. Start the mock API
 npm run dev:mock
 
-# 3. In another terminal, start the MCP server
+# 4. In another terminal, start the MCP server
 npm run dev
 
-# 4. Configure Claude Desktop (claude_desktop_config.json)
+# 5. Configure Claude Desktop (claude_desktop_config.json)
+#    API_USERNAME and API_PASSWORD are required; these are the mock API's demo values
 {
   "mcpServers": {
     "rest-bridge": {
@@ -52,13 +56,15 @@ npm run dev
       "args": ["tsx", "src/index.ts"],
       "cwd": "/path/to/mcp-rest-bridge",
       "env": {
-        "API_BASE_URL": "http://localhost:3100"
+        "API_BASE_URL": "http://localhost:3100",
+        "API_USERNAME": "admin",
+        "API_PASSWORD": "admin123"
       }
     }
   }
 }
 
-# 5. Run tests
+# 6. Run tests
 npm test
 ```
 

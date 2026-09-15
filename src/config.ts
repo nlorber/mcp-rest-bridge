@@ -18,9 +18,9 @@ const configSchema = z.object({
   /** Base URL of the target REST API */
   API_BASE_URL: z.string().url().default("http://localhost:3100"),
 
-  /** API credentials */
-  API_USERNAME: z.string().default("admin"),
-  API_PASSWORD: z.string().default("admin123"),
+  /** API credentials. Required: a missing value fails at startup instead of falling back to dev credentials. */
+  API_USERNAME: z.string().min(1),
+  API_PASSWORD: z.string().min(1),
 
   /** Log level */
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),

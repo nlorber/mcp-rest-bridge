@@ -22,7 +22,11 @@ MCP_TRANSPORT=stdio  (or unset)
     "rest-bridge": {
       "command": "npx",
       "args": ["tsx", "src/index.ts"],
-      "cwd": "/path/to/mcp-rest-bridge"
+      "cwd": "/path/to/mcp-rest-bridge",
+      "env": {
+        "API_USERNAME": "admin",
+        "API_PASSWORD": "admin123"
+      }
     }
   }
 }

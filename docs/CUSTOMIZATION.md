@@ -12,6 +12,8 @@ API_USERNAME=your-username
 API_PASSWORD=your-password
 ```
 
+`API_USERNAME` and `API_PASSWORD` are required: the server refuses to start without them rather than falling back to the mock API's demo credentials.
+
 Update `src/config.ts` if your API uses different authentication (API keys, OAuth, etc.).
 
 ## Step 2: Adapt the auth layer

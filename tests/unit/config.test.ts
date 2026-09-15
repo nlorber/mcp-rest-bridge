@@ -26,6 +26,9 @@ beforeEach(() => {
     saved[key] = process.env[key];
     delete process.env[key];
   }
+  // Credentials have no defaults; tests covering their absence delete them explicitly.
+  process.env.API_USERNAME = "test-user";
+  process.env.API_PASSWORD = "test-pass";
 });
 
 afterEach(() => {
@@ -39,17 +42,27 @@ afterEach(() => {
 });
 
 describe("loadConfig", () => {
-  it("returns all defaults when no env vars are set", () => {
+  it("returns all defaults when only the required credentials are set", () => {
     const config = loadConfig();
     expect(config.MCP_TRANSPORT).toBe("stdio");
     expect(config.MCP_HTTP_PORT).toBe(3456);
     expect(config.API_BASE_URL).toBe("http://localhost:3100");
-    expect(config.API_USERNAME).toBe("admin");
-    expect(config.API_PASSWORD).toBe("admin123");
+    expect(config.API_USERNAME).toBe("test-user");
+    expect(config.API_PASSWORD).toBe("test-pass");
     expect(config.LOG_LEVEL).toBe("info");
     expect(config.HTTP_TIMEOUT_MS).toBe(30_000);
     expect(config.DEFAULT_TOOL_TIMEOUT_MS).toBe(60_000);
     expect(config.CACHE_TTL_MS).toBe(300_000);
+  });
+
+  it.each(["API_USERNAME", "API_PASSWORD"])("requires %s", (key) => {
+    delete process.env[key];
+    expect(() => loadConfig()).toThrow(key);
+  });
+
+  it("rejects empty credentials", () => {
+    process.env.API_PASSWORD = "";
+    expect(() => loadConfig()).toThrow("API_PASSWORD");
   });
 
   it("accepts valid overrides for all fields", () => {

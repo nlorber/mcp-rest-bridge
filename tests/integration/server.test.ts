@@ -14,10 +14,14 @@ import { startStdioTransport } from "../../src/transport/stdio.js";
 beforeEach(() => {
   clearTools();
   clearSchemes();
+  // loadConfig requires upstream credentials; these tests never call the API
+  vi.stubEnv("API_USERNAME", "test-user");
+  vi.stubEnv("API_PASSWORD", "test-pass");
 });
 afterEach(() => {
   clearTools();
   clearSchemes();
+  vi.unstubAllEnvs();
 });
 
 describe("createMcpServer", () => {
