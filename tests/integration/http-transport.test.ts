@@ -3,7 +3,7 @@ import type { Server as HttpServer } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { LATEST_PROTOCOL_VERSION, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { startHttpTransport } from "../../src/transport/http.js";
 import { Logger } from "../../src/logger.js";
 
@@ -18,6 +18,24 @@ function serverFactory(): Server {
   );
   server.setRequestHandler(ListToolsRequestSchema, () => Promise.resolve({ tools: [] }));
   return server;
+}
+
+/** Raw POST of a well-formed initialize request, as a real client would send it. */
+function postInitialize(baseUrl: string, id: number): Promise<Response> {
+  return fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id,
+      method: "initialize",
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: "raw-client", version: "0.0.1" },
+      },
+    }),
+  });
 }
 
 interface ConnectedClient {
@@ -105,6 +123,38 @@ describe("HTTP Transport", () => {
     expect(result.tools).toHaveLength(0);
   });
 
+  it("rejects non-initialize requests without a session and allocates no session", async () => {
+    const res = await fetch(`${BASE_URL}/mcp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+    });
+    expect(res.status).toBe(400);
+
+    const malformed = await fetch(`${BASE_URL}/mcp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 2 }),
+    });
+    expect(malformed.status).toBe(400);
+
+    expect(await healthSessions()).toBe(0);
+  });
+
+  it("returns 404 for an unknown session id", async () => {
+    const res = await fetch(`${BASE_URL}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "mcp-session-id": "does-not-exist",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+    });
+    expect(res.status).toBe(404);
+    expect(await healthSessions()).toBe(0);
+  });
+
   it("session cap: rejects new sessions with 503 when at capacity", async () => {
     // Start a separate server with maxSessions: 1 to test the cap
     const capPort = 14580;
@@ -116,19 +166,12 @@ describe("HTTP Transport", () => {
     try {
       const capBaseUrl = `http://localhost:${capPort}`;
       // First session: should succeed
-      const r1 = await fetch(`${capBaseUrl}/mcp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 1 }),
-      });
-      expect(r1.status).not.toBe(503);
+      const r1 = await postInitialize(capBaseUrl, 1);
+      expect(r1.status).toBe(200);
+      await r1.text();
 
       // Second session: at cap, should get 503
-      const r2 = await fetch(`${capBaseUrl}/mcp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 2 }),
-      });
+      const r2 = await postInitialize(capBaseUrl, 2);
       expect(r2.status).toBe(503);
     } finally {
       await new Promise<void>((resolve) => capServer.close(() => resolve()));

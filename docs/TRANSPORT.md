@@ -38,9 +38,9 @@ MCP_HTTP_PORT=3456  (default)
 **How it works**: An Express HTTP server listens on the configured port. Clients send requests to `/mcp`. Sessions are managed via the `mcp-session-id` header.
 
 **Session management**:
-1. First request: no `mcp-session-id` header → server creates a new session and returns the ID
-2. Subsequent requests: include `mcp-session-id` header → server routes to the existing session
-3. Sessions are cleaned up automatically when the transport closes
+1. First request: an `initialize` request with no `mcp-session-id` header → server creates a new session and returns the ID. Any other request without a session ID is rejected with HTTP 400 and allocates nothing.
+2. Subsequent requests: include `mcp-session-id` header → server routes to the existing session. An unknown or evicted ID returns HTTP 404, which tells the client to re-initialize.
+3. Sessions are cleaned up when the client terminates them (`DELETE /mcp`), when the transport closes, or on idle eviction
 
 **Session limits & hardening**:
 - **Cap**: the server holds at most `maxSessions` concurrent sessions (default 1000); once reached, new sessions are rejected with HTTP 503.

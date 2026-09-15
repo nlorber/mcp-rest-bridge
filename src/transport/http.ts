@@ -3,6 +3,7 @@ import type { Server as HttpServer } from "node:http";
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "../logger.js";
 import { createRequestLogger } from "./request-logger.js";
 import { createRateLimiter } from "./rate-limiter.js";
@@ -43,18 +44,16 @@ export interface HttpTransportOptions {
 }
 
 /**
- * Evict sessions idle longer than idleTimeoutMs. Extracted from the interval
- * callback so the sweep can be unit-tested without the 60s timer.
+ * Evict and close sessions idle longer than idleTimeoutMs. Extracted from the
+ * interval callback so the sweep can be unit-tested without the 60s timer.
  */
-export function sweepIdleSessions<T extends { lastActivity: number }>(
-  sessions: Map<string, T>,
-  now: number,
-  idleTimeoutMs: number,
-  logger: Logger,
-): void {
+export function sweepIdleSessions<
+  T extends { lastActivity: number; transport: { close(): Promise<void> } },
+>(sessions: Map<string, T>, now: number, idleTimeoutMs: number, logger: Logger): void {
   for (const [id, entry] of sessions) {
     if (now - entry.lastActivity > idleTimeoutMs) {
       sessions.delete(id);
+      void entry.transport.close();
       logger.debug("idle session evicted", { sessionId: id });
     }
   }
@@ -112,11 +111,30 @@ export function startHttpTransport(
   app.all("/mcp", async (req, res) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-    // Reuse existing session and refresh its activity timestamp
-    if (sessionId && sessions.has(sessionId)) {
-      const entry = sessions.get(sessionId)!;
+    if (sessionId) {
+      const entry = sessions.get(sessionId);
+      if (!entry) {
+        // Unknown or evicted session: per the MCP spec, 404 tells the client to re-initialize
+        res.status(404).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message: "Session not found" },
+          id: null,
+        });
+        return;
+      }
       entry.lastActivity = Date.now();
       await entry.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Only an initialize request may open a session, so requests that would be
+    // rejected anyway never allocate a Server and transport.
+    if (req.method !== "POST" || !isInitializeRequest(req.body)) {
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Bad Request: no valid session ID provided" },
+        id: null,
+      });
       return;
     }
 
@@ -127,26 +145,25 @@ export function startHttpTransport(
       return;
     }
 
-    // Create new session — each session gets its own Server instance because
-    // Server.connect() supports only one transport at a time.
-    // Pre-generate the session ID so it can be stored in the map immediately
-    // (transport.sessionId is null until handleRequest is called, which may
-    // hold the connection open for SSE streams).
-    const newSessionId = randomUUID();
+    // Each session gets its own Server instance because Server.connect() supports
+    // only one transport at a time. The session enters the map only once the SDK
+    // has accepted the initialize request.
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => newSessionId,
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (newSessionId) => {
+        sessions.set(newSessionId, { transport, lastActivity: Date.now() });
+        logger.debug("new session created", { sessionId: newSessionId });
+      },
     });
 
-    await serverFactory().connect(transport);
-    sessions.set(newSessionId, { transport, lastActivity: Date.now() });
-
+    // Set before connect(): Server.connect() chains its own close handler onto this one
     transport.onclose = () => {
-      sessions.delete(newSessionId);
-      logger.debug("session closed", { sessionId: newSessionId });
+      if (transport.sessionId) sessions.delete(transport.sessionId);
+      logger.debug("session closed", { sessionId: transport.sessionId });
     };
 
+    await serverFactory().connect(transport);
     await transport.handleRequest(req, res, req.body);
-    logger.debug("new session created", { sessionId: newSessionId });
   });
 
   app.get("/health", (_req, res) => {
