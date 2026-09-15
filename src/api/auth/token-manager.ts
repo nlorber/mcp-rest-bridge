@@ -127,8 +127,10 @@ export class TokenManager {
     }
 
     if (!response.ok) {
+      // The body is untrusted upstream text: log it server-side, keep it out of the error message
       const body = await response.text();
-      throw new Error(`Authentication failed (${response.status}): ${body}`);
+      this.logger.error("Authentication failed", { status: response.status, body });
+      throw new Error(`Authentication failed (${response.status})`);
     }
 
     const data = (await response.json()) as TokenResponse;

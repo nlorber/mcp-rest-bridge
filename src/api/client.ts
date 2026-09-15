@@ -93,10 +93,12 @@ export class HttpClient {
 
       if (!response.ok) {
         const body = await response.text();
+        // The body is logged here, server-side, because it must never reach the model
         this.logger.error("HTTP request failed", {
           method,
           path,
           status: response.status,
+          body,
         });
         throw new HttpError(response.status, body, method, path);
       }
@@ -127,7 +129,8 @@ export class HttpClient {
 }
 
 /**
- * HTTP error with status code and response body for error mapping.
+ * HTTP error with status code for error mapping. `body` holds the raw upstream response
+ * for server-side logging; it is kept out of `message` and must not be forwarded to the model.
  */
 export class HttpError extends Error {
   constructor(
@@ -136,7 +139,7 @@ export class HttpError extends Error {
     public readonly method: string,
     public readonly path: string,
   ) {
-    super(`HTTP ${status} ${method} ${path}: ${body}`);
+    super(`HTTP ${status} ${method} ${path}`);
     this.name = "HttpError";
   }
 }

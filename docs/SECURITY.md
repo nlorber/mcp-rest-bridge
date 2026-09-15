@@ -66,7 +66,8 @@ Every tool input is validated with Zod schemas. Invalid or unexpected parameters
 
 ## Layer 6: Error Handling
 
-- API errors are mapped to sanitized MCP errors (`src/api/errors.ts`)
+- Tool failures (upstream API errors, timeouts) are returned as tool results with `isError: true`, so the model sees what went wrong and can recover; malformed calls (unknown tool, arguments that fail the schema) are protocol errors (`InvalidParams`)
+- Only messages written by the bridge reach the model (`src/api/errors.ts`): upstream response bodies are untrusted and are logged server-side, never forwarded, and unrecognized errors surface as a generic failure
 - Stack traces and internal details are not exposed to the LLM
 - The logger redacts sensitive keys in all contexts
 

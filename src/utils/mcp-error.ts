@@ -1,10 +1,29 @@
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 /**
+ * A tool execution failure whose message is written by the bridge and safe to show
+ * the model. The CallTool dispatcher returns it as an `isError` tool result; any
+ * other error thrown by a tool surfaces only as a generic failure.
+ */
+export class ToolError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ToolError";
+  }
+}
+
+/**
  * Create an InvalidRequest MCP error (bad user input, missing params).
  */
 export function invalidRequest(message: string): McpError {
   return new McpError(ErrorCode.InvalidRequest, message);
+}
+
+/**
+ * Create an InvalidParams MCP error (unknown tool, arguments that fail a tool's schema).
+ */
+export function invalidParams(message: string): McpError {
+  return new McpError(ErrorCode.InvalidParams, message);
 }
 
 /**

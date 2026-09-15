@@ -1,105 +1,58 @@
 import { describe, it, expect } from "vitest";
-import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { HttpError } from "../../src/api/client.js";
 import { mapApiError } from "../../src/api/errors.js";
+import { ToolError } from "../../src/utils/mcp-error.js";
 
-function expectMcpError(fn: () => void, code: ErrorCode, messagePattern: string) {
+const SECRET_BODY = "internal stack trace at db.internal:5432";
+
+function thrownBy(fn: () => void): unknown {
   try {
     fn();
-    expect.fail("Expected function to throw");
   } catch (error) {
-    expect(error).toBeInstanceOf(McpError);
-    expect((error as McpError).code).toBe(code);
-    expect((error as McpError).message).toContain(messagePattern);
+    return error;
   }
+  return expect.fail("Expected function to throw");
 }
 
 describe("mapApiError", () => {
-  it("maps HttpError 400 to InvalidRequest with body", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(400, "invalid input", "POST", "/items")),
-      ErrorCode.InvalidRequest,
-      "Bad request: invalid input",
-    );
+  it.each([
+    [400, "POST", "/items", "Bad request: the API rejected the input"],
+    [401, "GET", "/me", "Authentication failed"],
+    [403, "DELETE", "/resource", "Access denied"],
+    [404, "GET", "/widgets/99", "Not found: GET /widgets/99"],
+    [409, "POST", "/items", "Conflict:"],
+    [429, "GET", "/data", "Rate limited"],
+    [500, "GET", "/data", "API server error (500)"],
+    [503, "GET", "/health", "API server error (503)"],
+    [418, "BREW", "/coffee", "API error (418)"],
+  ])("maps HttpError %i to a ToolError without the upstream body", (status, method, path, expected) => {
+    const error = thrownBy(() => mapApiError(new HttpError(status, SECRET_BODY, method, path)));
+
+    expect(error).toBeInstanceOf(ToolError);
+    expect((error as ToolError).message).toContain(expected);
+    expect((error as ToolError).message).not.toContain(SECRET_BODY);
   });
 
-  it("maps HttpError 401 to InvalidRequest with auth message", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(401, "unauthorized", "GET", "/me")),
-      ErrorCode.InvalidRequest,
-      "Authentication failed",
+  it("maps a fetch timeout to a ToolError", () => {
+    const error = thrownBy(() =>
+      mapApiError(new DOMException("The operation was aborted due to timeout", "TimeoutError")),
     );
+
+    expect(error).toBeInstanceOf(ToolError);
+    expect((error as ToolError).message).toBe("API request timed out");
   });
 
-  it("maps HttpError 403 to InvalidRequest with permissions message", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(403, "forbidden", "DELETE", "/resource")),
-      ErrorCode.InvalidRequest,
-      "Access denied",
-    );
+  it("rethrows unrecognized errors unchanged", () => {
+    const original = new SyntaxError(`Unexpected token '<', "${SECRET_BODY}" is not valid JSON`);
+    expect(thrownBy(() => mapApiError(original))).toBe(original);
+    expect(thrownBy(() => mapApiError("something went wrong"))).toBe("something went wrong");
   });
+});
 
-  it("maps HttpError 404 to InvalidRequest with method and path", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(404, "not found", "GET", "/widgets/99")),
-      ErrorCode.InvalidRequest,
-      "Not found: GET /widgets/99",
-    );
-  });
-
-  it("maps HttpError 409 to InvalidRequest with body", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(409, "duplicate key", "POST", "/items")),
-      ErrorCode.InvalidRequest,
-      "Conflict: duplicate key",
-    );
-  });
-
-  it("maps HttpError 429 to InvalidRequest with rate limit message", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(429, "too many requests", "GET", "/data")),
-      ErrorCode.InvalidRequest,
-      "Rate limited",
-    );
-  });
-
-  it("maps HttpError 500 to InternalError with status and body", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(500, "internal server error", "GET", "/data")),
-      ErrorCode.InternalError,
-      "API server error (500): internal server error",
-    );
-  });
-
-  it("maps HttpError 503 to InternalError with status and body", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(503, "service unavailable", "GET", "/health")),
-      ErrorCode.InternalError,
-      "API server error (503): service unavailable",
-    );
-  });
-
-  it("maps unknown 4xx HttpError (418) to InvalidRequest with status and body", () => {
-    expectMcpError(
-      () => mapApiError(new HttpError(418, "I'm a teapot", "BREW", "/coffee")),
-      ErrorCode.InvalidRequest,
-      "API error (418): I'm a teapot",
-    );
-  });
-
-  it("maps plain Error to InternalError with message", () => {
-    expectMcpError(
-      () => mapApiError(new Error("network timeout")),
-      ErrorCode.InternalError,
-      "API request failed: network timeout",
-    );
-  });
-
-  it("maps non-Error string value to InternalError with string representation", () => {
-    expectMcpError(
-      () => mapApiError("something went wrong"),
-      ErrorCode.InternalError,
-      "API request failed: something went wrong",
-    );
+describe("HttpError", () => {
+  it("keeps the body out of its message", () => {
+    const error = new HttpError(500, SECRET_BODY, "GET", "/items");
+    expect(error.message).toBe("HTTP 500 GET /items");
+    expect(error.body).toBe(SECRET_BODY);
   });
 });
