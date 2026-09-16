@@ -183,7 +183,8 @@ async function judge(
 
   const response = await anthropic.messages.create({
     model: JUDGE_MODEL,
-    max_tokens: 512,
+    // Enough headroom that a verdict is never lost to truncation (see parseJudgeResponse)
+    max_tokens: 1024,
     system: JUDGE_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   });
