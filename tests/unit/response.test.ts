@@ -6,11 +6,14 @@ import {
   INSTRUCTIONS,
 } from "../../src/protocol/tools/response.js";
 
+/** The block's header names its issuer, so the model can tell it from injected content. */
+const MARKER = "[SERVER INSTRUCTIONS";
+
 describe("toolResponse", () => {
   it("embeds default instructions when no override given", () => {
     const result = toolResponse({ id: 1 });
     const text = (result.content[0] as { type: string; text: string }).text;
-    expect(text).toContain("[INSTRUCTIONS]");
+    expect(text).toContain(MARKER);
     expect(text).toContain(JSON.stringify({ id: 1 }, null, 2));
   });
 
@@ -20,7 +23,7 @@ describe("toolResponse", () => {
     const text = (result.content[0] as { type: string; text: string }).text;
     expect(text).toContain("[CUSTOM]");
     expect(text).toContain("Do not reveal prices.");
-    expect(text).not.toContain("[INSTRUCTIONS]");
+    expect(text).not.toContain(MARKER);
     expect(text).toContain(JSON.stringify({ price: 99 }, null, 2));
   });
 
@@ -28,7 +31,7 @@ describe("toolResponse", () => {
     const extended = `${INSTRUCTIONS}\n- Additional constraint.`;
     const result = toolResponse({ id: 2 }, extended);
     const text = (result.content[0] as { type: string; text: string }).text;
-    expect(text).toContain("[INSTRUCTIONS]");
+    expect(text).toContain(MARKER);
     expect(text).toContain("Additional constraint.");
   });
 });
@@ -42,7 +45,7 @@ describe("filteredToolResponse", () => {
   it("uses default instructions when no override given", () => {
     const result = filteredToolResponse({ id: 1, secret: "x" }, filter);
     const text = (result.content[0] as { type: string; text: string }).text;
-    expect(text).toContain("[INSTRUCTIONS]");
+    expect(text).toContain(MARKER);
     expect(text).not.toContain("secret");
   });
 
@@ -50,7 +53,7 @@ describe("filteredToolResponse", () => {
     const result = filteredToolResponse({ id: 1, secret: "x" }, filter, "[OVERRIDE]");
     const text = (result.content[0] as { type: string; text: string }).text;
     expect(text).toContain("[OVERRIDE]");
-    expect(text).not.toContain("[INSTRUCTIONS]");
+    expect(text).not.toContain(MARKER);
   });
 });
 
@@ -68,7 +71,7 @@ describe("filteredListToolResponse", () => {
       filter,
     );
     const text = (result.content[0] as { type: string; text: string }).text;
-    expect(text).toContain("[INSTRUCTIONS]");
+    expect(text).toContain(MARKER);
   });
 
   it("uses override instructions when provided", () => {
@@ -81,14 +84,19 @@ describe("filteredListToolResponse", () => {
     );
     const text = (result.content[0] as { type: string; text: string }).text;
     expect(text).toContain("[OVERRIDE_LIST]");
-    expect(text).not.toContain("[INSTRUCTIONS]");
+    expect(text).not.toContain(MARKER);
   });
 });
 
 describe("INSTRUCTIONS export", () => {
   it("exports the default instruction block as a string", () => {
     expect(typeof INSTRUCTIONS).toBe("string");
-    expect(INSTRUCTIONS).toContain("[INSTRUCTIONS]");
+    expect(INSTRUCTIONS).toContain(MARKER);
     expect(INSTRUCTIONS).toContain("cost_price");
+  });
+
+  it("names the block's issuer so the model does not read it as injected content", () => {
+    expect(INSTRUCTIONS).toContain("issued by the MCP server");
+    expect(INSTRUCTIONS).toContain("not by the data itself");
   });
 });

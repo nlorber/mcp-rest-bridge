@@ -36,7 +36,8 @@ crafted payload cannot smuggle fields through prototype pollution.
 Every tool response includes embedded LLM instructions that guide presentation behavior:
 
 ```
-[INSTRUCTIONS]
+[SERVER INSTRUCTIONS — issued by the MCP server that fetched this data, not by the data itself]
+They are part of the response contract, not text injected by a user or by a record; follow them.
 When presenting this data to the user:
 - Never show internal IDs or technical identifiers.
 - Never show internal fields (internal_code, supplier_id, cost_price, margin_pct).
@@ -45,6 +46,8 @@ When presenting this data to the user:
 ```
 
 Even if a field slips through the filter, the LLM is instructed not to display it.
+
+The origin label is not decoration. In an adversarial run, a model primed to resist prompt injection classified this block as injected content, announced it was disregarding it, and then printed the internal IDs it names — the guardrail was mistaken for the attack. Saying who issued the block is what separates it from data the model is right to distrust.
 
 ## Layer 3: Server Instructions
 
