@@ -34,7 +34,8 @@ export function listItemsTool(httpClient: HttpClient): ToolDefinition {
       name: "list_items",
       description:
         "List items with pagination, search, and filtering. " +
-        "Returns a paginated list of items with their key attributes.",
+        "Returns a paginated list of items with their key attributes. " +
+        "Covers only the connected account's items; no argument lists another account's items.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
     handler: async (args, signal) => {

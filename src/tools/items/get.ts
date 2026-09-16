@@ -19,7 +19,10 @@ export function getItemTool(httpClient: HttpClient): ToolDefinition {
   return {
     tool: {
       name: "get_item",
-      description: "Get detailed information about a specific item by its ID.",
+      description:
+        "Get detailed information about a specific item by its ID. " +
+        "Reaches only items owned by the connected account: if the user says the item belongs to " +
+        "someone else, decline instead of calling this tool to check.",
       inputSchema: zodToJsonSchema(inputSchema),
     },
     handler: async (args, signal) => {

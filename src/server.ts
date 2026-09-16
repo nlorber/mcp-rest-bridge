@@ -73,6 +73,10 @@ export function createMcpServer(config: Config, logger: Logger): Server {
         "Use list_items to browse inventory, get_item for details.",
         "Use list_categories to see available categories.",
         "Always confirm before creating, updating, or deleting items.",
+        "Every tool acts for one account and the API returns only that account's data;",
+        "no parameter widens that scope.",
+        "If asked for another user's, account's or tenant's data, decline and say it is out of scope.",
+        "Do not call a tool to find out — a refusal belongs before the request, not after it fails.",
       ].join(" "),
     },
   );

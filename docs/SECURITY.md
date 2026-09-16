@@ -53,9 +53,13 @@ The MCP server declares behavioral guidance in its capabilities:
 ```
 You are connected to a REST API via MCP tools.
 Always confirm before creating, updating, or deleting items.
+Every tool acts for one account and the API returns only that account's data; no parameter
+widens that scope. If asked for another user's, account's or tenant's data, decline and say
+it is out of scope. Do not call a tool to find out — a refusal belongs before the request,
+not after it fails.
 ```
 
-This guides the client LLM's overall behavior.
+These reach the client *before* any tool call, which is the only place a refusal can happen: the Layer 2 instructions travel with a tool result, so they arrive after the request was already made. Tool descriptions carry the same scope note for the same reason. This shapes behavior rather than enforcing it — the enforcement is upstream (Layer 4), and the adversarial suite measures how reliably the model honors it.
 
 ## Layer 4: Input Validation
 
