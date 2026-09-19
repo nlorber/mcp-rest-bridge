@@ -1,10 +1,26 @@
 version: 2
 updates:
+  # Minor and patch bumps arrive as one monthly PR. Major bumps are migrations,
+  # taken by hand. An update-types ignore never blocks a security update.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      dependencies:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Pre-1.0, so a minor bump can break. Only the adversarial suite uses it,
+      # and CI cannot run that suite, so it is bumped by hand alongside a run.
+      - dependency-name: "@anthropic-ai/sdk"
+        update-types: ["version-update:semver-minor"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
